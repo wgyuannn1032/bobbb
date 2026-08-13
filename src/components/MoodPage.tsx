@@ -166,21 +166,21 @@ function MoodStats({ records }: { records: MoodRecord[] }) {
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3">
-      <div className="app-surface border rounded-xl p-3 text-center">
-        <div className={`text-2xl font-extrabold ${avgCfg.color}`}>{avg.toFixed(1)}</div>
-        <div className="app-text-muted text-xs mt-0.5">平均情緒</div>
-      </div>
-      <div className="app-surface border rounded-xl p-3 text-center">
-        <div className="app-warning text-2xl font-extrabold">{streak}</div>
-        <div className="app-text-muted text-xs mt-0.5">連續天數 🔥</div>
-      </div>
-      <div className="app-surface border rounded-xl p-3 text-center">
-        <div className="app-accent text-2xl font-extrabold">{records.length}</div>
-        <div className="app-text-muted text-xs mt-0.5">打卡次數</div>
-      </div>
-    </div>
-  )
+		<div className="grid grid-cols-3 gap-3">
+			<div className="app-surface border rounded-xl p-3 text-center">
+				<div className={`text-2xl font-extrabold ${avgCfg.color}`}>{avg.toFixed(1)}</div>
+				<div className="app-text-muted text-xs mt-0.5">平均情緒</div>
+			</div>
+			<div className="app-surface border rounded-xl p-3 text-center">
+				<div className="app-warning text-2xl font-extrabold">{streak}</div>
+				<div className="app-text-muted text-xs mt-0.5">連續天數</div>
+			</div>
+			<div className="app-surface border rounded-xl p-3 text-center">
+				<div className="app-accent text-2xl font-extrabold">{records.length}</div>
+				<div className="app-text-muted text-xs mt-0.5">打卡次數</div>
+			</div>
+		</div>
+  );
 }
 
 // ── Main component ────────────────────────────────────────────

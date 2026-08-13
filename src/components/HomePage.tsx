@@ -15,6 +15,8 @@ import {
   IconBubble,
   IconStars,
   IconCards,
+  IconHeart,
+  IconDeviceGamepad2,
   IconUserEdit,
   IconX,
   IconMoodSmile,
@@ -209,8 +211,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 			>
 				{/* Sidebar header */}
 				<div className="flex items-center justify-between px-4 py-4 border-b border-[var(--app-border)]">
-					<span className="flex items-center gap-1.5 font-bold text-sm gradient-text-2">
-						<IconDiamond size={16} className="app-accent" aria-hidden="true" />
+					<span className="flex items-center gap-2 font-bold text-lg gradient-text-2">
+						<IconDiamond size={20} className="app-accent" aria-hidden="true" />
 						DailyGem
 					</span>
 					<button
@@ -224,8 +226,9 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 
 				{/* Games & Tools section */}
 				<nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 tracking-wider">
-						💛 心情工具
+					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 tracking-wider flex items-center gap-1.5">
+						<IconHeart size={14} aria-hidden="true" />
+						心情工具
 					</p>
 					{TOOLS.map((t) => (
 						<button
@@ -238,8 +241,9 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							<span>{t.label}</span>
 						</button>
 					))}
-					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 mt-3 tracking-wider">
-						🎮 紓壓小遊戲
+					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 mt-3 tracking-wider flex items-center gap-1.5">
+						<IconDeviceGamepad2 size={14} aria-hidden="true" />
+						紓壓小遊戲
 					</p>
 					{GAMES.map((g) => (
 						<a
