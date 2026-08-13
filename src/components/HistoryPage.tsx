@@ -102,7 +102,7 @@ export default function HistoryPage({ db, uid, gems, onBack, onAnswersChanged, e
                   <span className="app-accent text-xs font-semibold">{a.category}</span>
                   <span className="app-text-muted flex items-center gap-1 text-xs">
                     {a.isPublic ? <IconWorld size={13} aria-hidden="true" /> : <IconLock size={13} aria-hidden="true" />}
-                    {a.isPublic ? '公開' : '私人'}
+                    {a.isPublic ? '匿名公開' : '私人'}
                   </span>
                   <span className="app-text-muted text-xs ml-auto">{a.date}</span>
                 </div>
@@ -299,7 +299,7 @@ function EditAnswerModal({ record, onSave, onClose }: EditAnswerModalProps) {
           className="app-surface-muted app-text-secondary app-hover w-full flex items-center gap-3 border border-[var(--app-border)] rounded-xl px-3.5 py-3 my-4 text-left transition"
         >
           {isPublic ? <IconWorld size={20} className="app-accent" aria-hidden="true" /> : <IconLock size={20} className="app-text-muted" aria-hidden="true" />}
-          <span className="flex-1 text-sm font-semibold">{isPublic ? '公開回答' : '私人回答'}</span>
+          <span className="flex-1 text-sm font-semibold">{isPublic ? '匿名公開回答' : '私人回答'}</span>
           <span className={`relative h-6 w-11 rounded-full transition-colors ${isPublic ? 'bg-violet-600' : 'bg-slate-400/40'}`} aria-hidden="true">
             <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${isPublic ? 'translate-x-6' : 'translate-x-1'}`} />
           </span>

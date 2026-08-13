@@ -30,19 +30,13 @@ export interface AnswerRecord {
   answer:          string
   gems:            number
   isPublic?:       boolean
-  author?:         PublicUserData
   createdAt?:      unknown
   updatedAt?:      unknown
 }
 
-type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'questionId' | 'author' | 'createdAt' | 'updatedAt'> & {
+type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'questionId' | 'createdAt' | 'updatedAt'> & {
   questionId: string
   isPublic:   boolean
-}
-
-export interface PublicUserData {
-  displayName: string
-  photoURL:    string | null
 }
 
 export async function ensureUserDoc(
@@ -56,11 +50,6 @@ export async function ensureUserDoc(
     providerId: user.providerData[0]?.providerId ?? null,
     lastLoginAt: serverTimestamp(),
   }
-  const publicProfile: PublicUserData = {
-    displayName: user.displayName ?? '朋友',
-    photoURL: user.photoURL ?? null,
-  }
-
   await runTransaction(db, async transaction => {
     const snap = await transaction.get(ref)
 
@@ -69,7 +58,6 @@ export async function ensureUserDoc(
         ...identity,
         ...(user.displayName ? { displayName: user.displayName } : {}),
       })
-      transaction.set(doc(db, 'publicProfiles', user.uid), publicProfile, { merge: true })
       return
     }
 
@@ -81,7 +69,6 @@ export async function ensureUserDoc(
       lastAnsweredDate: null,
       createdAt:        serverTimestamp(),
     })
-    transaction.set(doc(db, 'publicProfiles', user.uid), publicProfile)
   })
 }
 
@@ -156,7 +143,6 @@ export async function updateUserData(
     displayName,
     description: profile.description?.trim() ?? '',
   })
-  batch.set(doc(db, 'publicProfiles', uid), { displayName }, { merge: true })
   await batch.commit()
 }
 
@@ -176,23 +162,7 @@ export async function fetchPublicAnswers(
     .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
     .slice(0, max)
 
-  const profiles = await fetchPublicProfiles(db, answers.map(answer => answer.uid))
-  return answers.map(answer => ({ ...answer, author: profiles.get(answer.uid) }))
-}
-
-async function fetchPublicProfiles(
-  db: Firestore,
-  userIds: string[]
-): Promise<Map<string, PublicUserData>> {
-  const uniqueIds = [...new Set(userIds)]
-  const entries = await Promise.all(uniqueIds.map(async userId => {
-    const snap = await getDoc(doc(db, 'publicProfiles', userId))
-    return snap.exists()
-      ? [userId, snap.data() as PublicUserData] as const
-      : null
-  }))
-
-  return new Map(entries.filter((entry): entry is readonly [string, PublicUserData] => entry !== null))
+  return answers
 }
 
 export async function updateAnswer(

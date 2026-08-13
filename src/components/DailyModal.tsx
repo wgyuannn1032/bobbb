@@ -145,11 +145,11 @@ export default function DailyModal({ question, questionIndex, totalQuestions, ge
               )}
               <span className="flex-1">
                 <span className="block text-sm font-semibold">
-                  {isPublic ? '公開回答' : '私人回答'}
+                  {isPublic ? '匿名公開回答' : '私人回答'}
                 </span>
                 <span className="app-text-muted block text-xs mt-0.5">
                   {isPublic
-                    ? '其他已登入使用者可以看到你的名稱、頭像與回答'
+                    ? '其他已登入使用者可以看到回答，但不會看到你的名稱或頭像'
                     : '只有你自己可以看到這則回答'}
                 </span>
               </span>

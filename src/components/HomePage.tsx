@@ -529,7 +529,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 										aria-hidden="true"
 									/>
 									<p className="app-text-muted text-sm">
-										目前還沒有其他人的公開回答
+										目前還沒有其他人的匿名回答
 									</p>
 								</div>
 							) : (
@@ -610,25 +610,13 @@ function AnswerCard({ record }: { record: AnswerRecord }) {
 }
 
 function PublicAnswerCard({ record }: { record: AnswerRecord }) {
-  const authorName = record.author?.displayName?.trim() || 'DailyGem 使用者'
-  const authorPhoto = record.author?.photoURL ||
-    `https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(record.uid)}`
-
   return (
     <article className="app-surface border rounded-xl p-4">
-      <header className="flex items-center gap-2.5 mb-3">
-        <img
-          src={authorPhoto}
-          alt=""
-          className="h-8 w-8 rounded-full object-cover border border-[var(--app-border)]"
-        />
-        <div className="min-w-0">
-          <p className="app-text text-sm font-semibold truncate">{authorName}</p>
-          <p className="app-text-muted text-xs">{record.date}</p>
-        </div>
+      <header className="flex items-center justify-between gap-2 mb-3">
+        <p className="app-text-muted text-xs">匿名分享 · {record.date}</p>
         <span className="app-accent ml-auto flex items-center gap-1 text-xs font-medium">
           <IconWorld size={14} aria-hidden="true" />
-          公開
+          匿名公開
         </span>
       </header>
       <p className="app-accent text-xs font-semibold mb-1.5">{record.category}</p>

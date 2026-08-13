@@ -7,19 +7,9 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Public-facing profile data is kept separate so private user fields such as
-    // email and login metadata never need to be exposed to other users.
+    // Public answers are anonymous, so profile data is never readable by others.
     match /publicProfiles/{userId} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null
-        && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['displayName', 'photoURL'])
-        && request.resource.data.displayName is string
-        && request.resource.data.displayName.size() <= 80
-        && (!request.resource.data.keys().hasAny(['photoURL'])
-          || request.resource.data.photoURL == null
-          || request.resource.data.photoURL is string);
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if false;
     }
 
     // Answers are private by default. Public answers are visible to signed-in users.
