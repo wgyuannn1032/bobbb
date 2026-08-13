@@ -234,7 +234,12 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						<button
 							key={t.view}
 							type="button"
-							className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium app-hover app-text-secondary transition"
+							aria-current={view === t.view ? 'page' : undefined}
+							className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${
+								view === t.view
+									? 'bg-rose-500/15 border border-rose-500/30 text-rose-400 shadow-sm'
+									: 'app-hover app-text-secondary'
+							}`}
 							onClick={() => { setView(t.view); setSidebarOpen(false) }}
 						>
 							<span className={`${t.color} transition`}>{t.icon}</span>
