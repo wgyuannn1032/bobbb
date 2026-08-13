@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Firestore } from 'firebase/firestore'
 import {
-  IconArrowLeft, IconMoodCry, IconMoodSad, IconMoodNeutral,
+  IconMoodCry, IconMoodSad, IconMoodNeutral,
   IconMoodSmile, IconMoodHappy, IconPencil, IconCheck,
   IconCalendar, IconTrendingUp, IconNotes,
 } from '@tabler/icons-react'
@@ -12,6 +12,7 @@ import {
   MoodLevel, MoodRecord,
 } from '../lib/firestore'
 import { todayKey } from '../lib/gemini'
+import AppNav from './AppNav'
 
 interface Props {
   uid:    string
@@ -240,20 +241,11 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
     <div className={embedded ? 'flex w-full flex-col' : 'app-page flex min-h-screen flex-col'}>
 
       {/* ── NAV ───────────────────────────────────────── */}
-      {!embedded && <nav className="app-nav sticky top-0 z-20 flex items-center justify-between px-4 py-3 backdrop-blur border-b">
-        <button
-          onClick={onBack}
-          className="app-text-muted hover:app-text flex items-center gap-1.5 text-sm transition"
-        >
-          <IconArrowLeft size={18} />
-          返回首頁
-        </button>
-        <span className="app-text font-semibold flex items-center gap-1.5">
-          <IconMoodSmile size={18} className="text-rose-400" />
-          情緒打卡
-        </span>
-        <div className="w-20" /> {/* spacer */}
-      </nav>}
+      {!embedded && <AppNav
+        onBack={onBack}
+        title="情緒打卡"
+        titleIcon={<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />}
+      />}
 
       {/* ── BODY ──────────────────────────────────────── */}
       <main className="flex-1 max-w-xl mx-auto w-full px-4 py-6 space-y-5">

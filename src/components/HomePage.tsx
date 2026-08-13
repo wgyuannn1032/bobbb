@@ -15,7 +15,6 @@ import {
   IconBubble,
   IconStars,
   IconCards,
-  IconMenu2,
   IconUserEdit,
   IconX,
   IconMoodSmile,
@@ -32,6 +31,7 @@ import {
 import { fetchDailyQuestion, DailyQuestion, todayKey, yesterdayKey, calcGems, fetchAIFeedback } from '../lib/gemini'
 import { AppConfig } from '../lib/firebase'
 import DailyModal from './DailyModal'
+import AppNav from './AppNav'
 import HistoryPage from './HistoryPage'
 import MoodPage from './MoodPage'
 import ProfileModal from './ProfileModal'
@@ -262,32 +262,16 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 
 			{/* ── MAIN CONTENT ────────────────────────────── */}
 			<div className="flex-1 min-w-0 flex flex-col lg:ml-60">
-				{/* ── HEADER ──────────────────────────────────── */}
-				<header className="app-nav sticky top-0 z-20 flex items-center justify-between px-4 py-3">
-					<div className="flex items-center gap-2">
-						{/* Hamburger (mobile only) */}
-						<button
-							onClick={() => setSidebarOpen(true)}
-							className="app-text-muted app-hover rounded-lg p-2 transition lg:hidden"
-							aria-label="開啟選單"
-						>
-							<IconMenu2 size={22} />
-						</button>
-						{view !== "home" && (
-							<button
-								type="button"
-								onClick={() => setView("home")}
-								className="app-text-secondary app-hover flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition"
-							>
-								<IconArrowRight
-									size={17}
-									className="rotate-180"
-									aria-hidden="true"
-								/>
-								返回首頁
-							</button>
-						)}
-					</div>
+				<AppNav
+					onOpenSidebar={() => setSidebarOpen(true)}
+					onBack={view !== "home" ? () => setView("home") : undefined}
+					title={view === "history" ? "歷史記錄" : view === "mood" ? "情緒打卡" : undefined}
+					titleIcon={view === "history"
+						? <IconHistory size={18} className="app-accent" aria-hidden="true" />
+						: view === "mood"
+							? <IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
+							: undefined}
+				>
 					<div className="flex items-center gap-3 relative">
 						{/* Gem counter */}
 						<div className="app-surface flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-sm font-semibold">
@@ -352,7 +336,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							</div>
 						)}
 					</div>
-				</header>
+				</AppNav>
 
 				{/* ── BODY ────────────────────────────────────── */}
 				{view === "history" ? (
