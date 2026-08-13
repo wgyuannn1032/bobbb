@@ -226,13 +226,17 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						<button
 							key={t.view}
 							type="button"
-							aria-current={view === t.view ? 'page' : undefined}
+							aria-current={view === t.view ? "page" : undefined}
 							className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${
 								view === t.view
-									? 'bg-rose-500/15 border border-rose-500/30 text-rose-400 shadow-sm'
-									: 'app-hover app-text-secondary'
+									? "bg-rose-500/15 border border-rose-500/30 text-rose-400 shadow-sm"
+									: "app-hover app-text-secondary"
 							}`}
-							onClick={() => { if (t.view === 'questions') setQuestionTab('checkin'); setView(t.view); setSidebarOpen(false) }}
+							onClick={() => {
+								if (t.view === "questions") setQuestionTab("checkin");
+								setView(t.view);
+								setSidebarOpen(false);
+							}}
 						>
 							<span className={`${t.color} transition`}>{t.icon}</span>
 							<span>{t.label}</span>
@@ -277,21 +281,37 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 				<AppNav
 					onOpenSidebar={() => setSidebarOpen(true)}
 					onBack={view !== "home" ? () => setView("home") : undefined}
-					title={view === "questions" ? "每日問答" : view === "mood" ? "情緒打卡" : undefined}
-					titleIcon={view === "questions" ? <IconSparkles size={18} className="app-accent" aria-hidden="true" /> : view === "mood"
-							? <IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
-							: undefined}
+					title={
+						view === "questions" ? "每日問答" : view === "mood" ? "情緒打卡" : undefined
+					}
+					titleIcon={
+						view === "questions" ? (
+							<IconSparkles size={18} className="app-accent" aria-hidden="true" />
+						) : view === "mood" ? (
+							<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
+						) : undefined
+					}
 				>
 					<div className="flex items-center gap-3 relative">
 						{/* Game coin counter */}
 						<GameCoins />
 						{/* Gem counter */}
 						<div className="group relative">
-							<div className="app-surface flex h-9 items-center gap-1.5 border px-4 rounded-full text-sm font-semibold" tabIndex={0} aria-describedby="gem-tooltip">
+							<div
+								className="app-surface flex h-9 items-center gap-1.5 border px-4 rounded-full text-sm font-semibold"
+								tabIndex={0}
+								aria-describedby="gem-tooltip"
+							>
 								<IconDiamond size={17} className="app-accent" aria-hidden="true" />
 								<span>{userData?.gems ?? 0}</span>
 							</div>
-							<span id="gem-tooltip" role="tooltip" className="pointer-events-none absolute right-0 top-full z-50 mt-2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">累積寶石</span>
+							<span
+								id="gem-tooltip"
+								role="tooltip"
+								className="pointer-events-none absolute right-0 top-full z-50 mt-2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+							>
+								累積寶石
+							</span>
 						</div>
 						{/* Avatar */}
 						<button
@@ -345,12 +365,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 
 				{/* ── BODY ────────────────────────────────────── */}
 				{view === "mood" ? (
-					<MoodPage
-						embedded
-						uid={user.uid}
-						db={db}
-						onBack={() => setView("home")}
-					/>
+					<MoodPage embedded uid={user.uid} db={db} onBack={() => setView("home")} />
 				) : view === "questions" ? (
 					<DailyQuestionPage
 						questions={questions}
@@ -408,22 +423,40 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						{/* Daily question shortcut */}
 						<button
 							type="button"
-							onClick={() => { setQuestionTab('checkin'); setActiveQuestionIndex(questions.findIndex(question => !isQuestionAnswered(question))); setView("questions") }}
+							onClick={() => {
+								setQuestionTab("checkin");
+								setActiveQuestionIndex(
+									questions.findIndex(
+										(question) => !isQuestionAnswered(question),
+									),
+								);
+								setView("questions");
+							}}
 							className="app-surface group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition hover:border-violet-400"
 						>
 							<div className="absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-400 to-emerald-400" />
 							<div className="flex items-center gap-3">
-								<span className="text-3xl" aria-hidden="true">✍️</span>
+								<span
+									className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400"
+									aria-hidden="true"
+								>
+									<IconSparkles size={25} />
+								</span>
 								<div className="min-w-0 flex-1">
 									<p className="app-text flex items-center gap-1.5 text-sm font-semibold">
-										<IconSparkles size={16} className="text-violet-400" aria-hidden="true" />
 										每日問答
 									</p>
 									<p className="app-text-muted mt-0.5 text-xs">
-										{questions.length === 0 ? 'AI 正在準備今日問題…' : `今天已完成 ${completedQuestionCount}/${questions.length} 題`}
+										{questions.length === 0
+											? "AI 正在準備今日問題…"
+											: `今天已完成 ${completedQuestionCount}/${questions.length} 題`}
 									</p>
 								</div>
-								<IconArrowRight size={18} className="app-text-muted flex-shrink-0 transition group-hover:text-violet-400" aria-hidden="true" />
+								<IconArrowRight
+									size={18}
+									className="app-text-muted flex-shrink-0 transition group-hover:text-violet-400"
+									aria-hidden="true"
+								/>
 							</div>
 						</button>
 
@@ -435,18 +468,27 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						>
 							<div className="absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-rose-400 via-pink-400 to-orange-400" />
 							<div className="flex items-center gap-3">
-								<span className="text-3xl" aria-hidden="true">😊</span>
+								<span
+									className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400"
+									aria-hidden="true"
+								>
+									<IconMoodSmile size={25} />
+								</span>
 								<div className="min-w-0 flex-1">
 									<p className="app-text flex items-center gap-1.5 text-sm font-semibold">
-										<IconMoodSmile size={16} className="text-rose-400" aria-hidden="true" />
 										情緒打卡
 									</p>
-									<p className="app-text-muted mt-0.5 text-xs">記錄今天的心情狀態</p>
+									<p className="app-text-muted mt-0.5 text-xs">
+										記錄今天的心情狀態
+									</p>
 								</div>
-								<IconArrowRight size={18} className="app-text-muted flex-shrink-0 transition group-hover:text-rose-400" aria-hidden="true" />
+								<IconArrowRight
+									size={18}
+									className="app-text-muted flex-shrink-0 transition group-hover:text-rose-400"
+									aria-hidden="true"
+								/>
 							</div>
 						</button>
-
 					</main>
 				)}
 
