@@ -1,23 +1,43 @@
 // src/components/CharacterColorPage.tsx — 角色換色頁面
 import { useState, useRef } from 'react'
 
-/**
- * 三張圖片放在 public/character/ 資料夾下：
- *   base.png    — 灰階底圖（會被染色）
- *   mask.png    — 剪影遮罩（只用來限制染色範圍，純黑白 PNG）
- *   overlay.png — 不被染色的頂層（例如角、裝飾）
- */
-const BASE_IMG    = '/character/base.png'
-const MASK_IMG    = '/character/mask.png'
-const OVERLAY_IMG = '/character/overlay.png'
+const CHARACTERS = [
+  { id: '熊',    label: '熊' },
+  { id: '兔子',  label: '兔子' },
+  { id: '土撥鼠', label: '土撥鼠' },
+  { id: '狐狸',  label: '狐狸' },
+  { id: '蜜蜂',  label: '蜜蜂' },
+  { id: '蝦子',  label: '蝦子' },
+]
 
 export default function CharacterColorPage() {
   const [color, setColor] = useState('#FFB6C1')
+  const [selected, setSelected] = useState('熊')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const base    = `/character/${selected}base.png`
+  const mask    = `/character/${selected}mask.png`
+  const overlay = `/character/${selected}overlay.png`
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-50 p-6">
       <h1 className="text-2xl font-bold text-gray-800">角色換色</h1>
+
+      {/* 角色選擇 */}
+      <div className="flex gap-2 flex-wrap justify-center">
+        {CHARACTERS.map(c => (
+          <button
+            key={c.id}
+            onClick={() => setSelected(c.id)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors
+              ${selected === c.id
+                ? 'bg-violet-500 text-white border-violet-500'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-violet-400'}`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
 
       {/* 顏色選擇器 */}
       <div className="flex items-center gap-3">
@@ -45,28 +65,26 @@ export default function CharacterColorPage() {
       </div>
 
       {/* 角色容器 */}
-      <div
-        style={{ position: 'relative', width: 300, height: 300 }}
-      >
+      <div style={{ position: 'relative', width: 300, height: 300 }}>
         {/* 底層：灰階底圖 */}
         <img
-          src={BASE_IMG}
-          alt="灰階底圖"
+          src={base}
+          alt={`${selected}底圖`}
           style={{
             position: 'absolute', top: 0, left: 0,
             width: '100%', height: '100%', objectFit: 'contain',
           }}
         />
 
-        {/* 中層：染色層，用 mask 限制範圍，multiply 混合 */}
+        {/* 中層：染色層 */}
         <div
           style={{
             position: 'absolute', top: 0, left: 0,
             width: '100%', height: '100%',
             backgroundColor: color,
             mixBlendMode: 'multiply',
-            WebkitMaskImage: `url('${MASK_IMG}')`,
-            maskImage: `url('${MASK_IMG}')`,
+            WebkitMaskImage: `url('${mask}')`,
+            maskImage: `url('${mask}')`,
             WebkitMaskSize: 'contain',
             maskSize: 'contain',
             WebkitMaskRepeat: 'no-repeat',
@@ -76,20 +94,16 @@ export default function CharacterColorPage() {
           } as React.CSSProperties}
         />
 
-        {/* 頂層：不被染色的部分（角、裝飾等） */}
+        {/* 頂層：不被染色的部分 */}
         <img
-          src={OVERLAY_IMG}
-          alt="不變色的頂層"
+          src={overlay}
+          alt={`${selected}頂層`}
           style={{
             position: 'absolute', top: 0, left: 0,
             width: '100%', height: '100%', objectFit: 'contain',
           }}
         />
       </div>
-
-      <p className="text-xs text-gray-400">
-        圖片放置於 <code className="bg-gray-100 px-1 rounded">public/character/</code>
-      </p>
     </div>
   )
 }
