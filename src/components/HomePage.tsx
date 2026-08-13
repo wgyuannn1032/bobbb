@@ -147,6 +147,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
       answer,
       gems,
       isPublic,
+      authorName:     displayName,
+      authorPhotoURL: user.photoURL,
     })
     const { newGems, newStreak } = await rewardUser(
       db, user.uid, gems, today, yesterdayKey(), userData
@@ -577,8 +579,8 @@ function AnswerCard({ record }: { record: AnswerRecord }) {
 }
 
 function PublicAnswerCard({ record }: { record: AnswerRecord }) {
-  const authorName = record.author?.displayName?.trim() || 'DailyGem 使用者'
-  const authorPhoto = record.author?.photoURL ||
+  const authorName = record.authorName?.trim() || 'DailyGem 使用者'
+  const authorPhoto = record.authorPhotoURL ||
     `https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(record.uid)}`
 
   return (

@@ -1,9 +1,9 @@
 // src/lib/firestore.ts  — Firestore CRUD helpers
 
 import {
-  doc, getDoc, setDoc, updateDoc, deleteDoc, runTransaction,
+  doc, getDoc, updateDoc, deleteDoc, runTransaction,
   collection, addDoc, query, where,
-  getDocs, serverTimestamp, writeBatch, Firestore,
+  getDocs, serverTimestamp, Firestore,
 } from 'firebase/firestore'
 import { User } from 'firebase/auth'
 
@@ -29,18 +29,16 @@ export interface AnswerRecord {
   answer:          string
   gems:            number
   isPublic?:       boolean
-  author?:         PublicUserData
+  authorName?:     string
+  authorPhotoURL?: string | null
   createdAt?:      unknown
   updatedAt?:      unknown
 }
 
-type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'author' | 'createdAt' | 'updatedAt'> & {
-  isPublic: boolean
-}
-
-export interface PublicUserData {
-  displayName: string
-  photoURL:    string | null
+type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'createdAt'> & {
+  isPublic:       boolean
+  authorName:     string
+  authorPhotoURL: string | null
 }
 
 export async function ensureUserDoc(
@@ -54,10 +52,6 @@ export async function ensureUserDoc(
     providerId: user.providerData[0]?.providerId ?? null,
     lastLoginAt: serverTimestamp(),
   }
-  const publicProfile: PublicUserData = {
-    displayName: user.displayName ?? '朋友',
-    photoURL: user.photoURL ?? null,
-  }
 
   await runTransaction(db, async transaction => {
     const snap = await transaction.get(ref)
@@ -67,7 +61,6 @@ export async function ensureUserDoc(
         ...identity,
         ...(user.displayName ? { displayName: user.displayName } : {}),
       })
-      transaction.set(doc(db, 'publicProfiles', user.uid), publicProfile, { merge: true })
       return
     }
 
@@ -79,7 +72,6 @@ export async function ensureUserDoc(
       lastAnsweredDate: null,
       createdAt:        serverTimestamp(),
     })
-    transaction.set(doc(db, 'publicProfiles', user.uid), publicProfile)
   })
 }
 
@@ -140,14 +132,10 @@ export async function updateUserData(
   uid: string,
   profile: Pick<UserData, 'displayName' | 'description'>
 ): Promise<void> {
-  const displayName = profile.displayName.trim()
-  const batch = writeBatch(db)
-  batch.update(doc(db, 'users', uid), {
-    displayName,
+  await updateDoc(doc(db, 'users', uid), {
+    displayName: profile.displayName.trim(),
     description: profile.description?.trim() ?? '',
   })
-  batch.set(doc(db, 'publicProfiles', uid), { displayName }, { merge: true })
-  await batch.commit()
 }
 
 export async function fetchPublicAnswers(
@@ -160,29 +148,11 @@ export async function fetchPublicAnswers(
     where('isPublic', '==', true)
   )
   const snap = await getDocs(q)
-  const answers = snap.docs
+  return snap.docs
     .map(d => ({ id: d.id, ...d.data() } as AnswerRecord))
     .filter(answer => answer.uid !== currentUid)
     .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
     .slice(0, max)
-
-  const profiles = await fetchPublicProfiles(db, answers.map(answer => answer.uid))
-  return answers.map(answer => ({ ...answer, author: profiles.get(answer.uid) }))
-}
-
-async function fetchPublicProfiles(
-  db: Firestore,
-  userIds: string[]
-): Promise<Map<string, PublicUserData>> {
-  const uniqueIds = [...new Set(userIds)]
-  const entries = await Promise.all(uniqueIds.map(async userId => {
-    const snap = await getDoc(doc(db, 'publicProfiles', userId))
-    return snap.exists()
-      ? [userId, snap.data() as PublicUserData] as const
-      : null
-  }))
-
-  return new Map(entries.filter((entry): entry is readonly [string, PublicUserData] => entry !== null))
 }
 
 export async function updateAnswer(
@@ -207,7 +177,7 @@ export async function deleteAnswer(
 
 // ── Mood Check-in ──────────────────────────────────────────
 
-export type MoodLevel = 1 | 2 | 3 | 4 | 5
+export type MoodLevel = 'thunder' | 'rain' | 'volcano' | 'sunny' | 'cloudy' | 'rainbow'
 
 export interface MoodRecord {
   id?:       string
@@ -222,22 +192,9 @@ export async function saveMoodCheckIn(
   db:     Firestore,
   record: Omit<MoodRecord, 'id' | 'createdAt'>
 ): Promise<void> {
-  await setDoc(doc(db, 'moods', moodDocumentId(record.uid, record.date)), {
+  await addDoc(collection(db, 'moods'), {
     ...record,
     createdAt: serverTimestamp(),
-  })
-}
-
-export async function updateMoodCheckIn(
-  db: Firestore,
-  recordId: string,
-  mood: MoodLevel,
-  note: string
-): Promise<void> {
-  await updateDoc(doc(db, 'moods', recordId), {
-    mood,
-    note: note.trim(),
-    updatedAt: serverTimestamp(),
   })
 }
 
@@ -259,7 +216,6 @@ export async function getTodayMood(
   uid:   string,
   today: string
 ): Promise<MoodRecord | null> {
-  // Querying also keeps records created with the previous auto-ID format readable.
   const q    = query(
     collection(db, 'moods'),
     where('uid',  '==', uid),
@@ -269,10 +225,6 @@ export async function getTodayMood(
   if (snap.empty) return null
   const d = snap.docs[0]
   return { id: d.id, ...d.data() } as MoodRecord
-}
-
-function moodDocumentId(uid: string, date: string): string {
-  return `${uid}_${date}`
 }
 
 function timestampMillis(value: unknown): number {
