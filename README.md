@@ -20,7 +20,7 @@
 2. 建立新專案
 3. 啟用 **Authentication** → 登入方式：電子郵件/密碼 + Google
 4. 建立 **Firestore Database**（先用測試模式，之後套用 `firestore.rules`）
-5. 在專案設定中新增 Web App，取得設定物件
+5. Firebase Web App 設定已內建於 `src/lib/firebase.ts`
 
 ### 2. 取得 Gemini API Key（可選，未填則使用內建備用問題）
 
@@ -34,7 +34,7 @@ npm install
 npm run dev
 ```
 
-開啟 `http://localhost:5173`，首次進入會出現設定視窗，填入 Firebase 與 Gemini 設定即可。
+開啟 `http://localhost:5173`，App 會使用內建的 Firebase 設定並直接進入登入畫面。
 
 ### 4. 部署
 
@@ -70,10 +70,13 @@ firebase deploy --only firestore:rules
 users/{uid}
   displayName:      string
   email:            string
+  photoURL:         string | null
+  providerId:       string | null
   gems:             number
   streak:           number
   lastAnsweredDate: string | null   (YYYY-MM-DD)
   createdAt:        Timestamp
+  lastLoginAt:      Timestamp
 
 answers/{auto-id}
   uid:       string

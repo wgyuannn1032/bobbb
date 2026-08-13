@@ -1,6 +1,7 @@
 // src/components/ConfigModal.tsx
 // First-time setup: user enters Firebase + Gemini config
 import { useState } from 'react'
+import { IconSettings } from '@tabler/icons-react'
 import { AppConfig, persistConfig } from '../lib/firebase'
 
 interface Props {
@@ -29,7 +30,10 @@ export default function ConfigModal({ onSaved }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <div className="bg-[#1e1e2e] border border-[#2d2d44] rounded-2xl p-8 w-full max-w-md animate-fade-in-up shadow-2xl overflow-y-auto max-h-[90vh]">
-        <h2 className="text-xl font-bold mb-1">⚙️ 設定 Firebase</h2>
+        <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
+          <IconSettings size={22} className="text-violet-400" aria-hidden="true" />
+          設定 Firebase
+        </h2>
         <p className="text-sm text-slate-400 mb-6">
           前往{' '}
           <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer"

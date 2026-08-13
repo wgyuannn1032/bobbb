@@ -4,6 +4,7 @@ import { AppConfig, loadConfig, initFirebase } from './lib/firebase'
 import { useAuth } from './hooks/useAuth'
 import { Auth } from 'firebase/auth'
 import { Firestore } from 'firebase/firestore'
+import { IconDiamond } from '@tabler/icons-react'
 import ConfigModal from './components/ConfigModal'
 import AuthPage    from './components/AuthPage'
 import HomePage    from './components/HomePage'
@@ -51,7 +52,7 @@ export default function App() {
   if (stage === 'loading' || status === 'loading') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] gap-4">
-        <span className="text-6xl animate-gem-pulse">💎</span>
+        <IconDiamond size={64} stroke={1.7} className="text-violet-400 animate-gem-pulse" aria-hidden="true" />
         <h1 className="text-3xl font-extrabold gradient-text">DailyGem</h1>
         <p className="text-slate-400 text-sm">每日一問，探索自我</p>
         <div className="mt-4 w-10 h-10 border-[3px] border-violet-500/20 border-t-violet-500 rounded-full animate-spin-slow" />

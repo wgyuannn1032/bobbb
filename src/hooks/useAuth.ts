@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup, GoogleAuthProvider,
   signOut, updateProfile,
+  browserLocalPersistence, setPersistence,
 } from 'firebase/auth'
 import { Auth } from 'firebase/auth'
 import { Firestore } from 'firebase/firestore'
@@ -18,15 +19,51 @@ export function useAuth(auth: Auth | null, db: Firestore | null) {
   const [status, setStatus] = useState<AuthStatus>('loading')
 
   useEffect(() => {
-    if (!auth) { setStatus('unauthenticated'); return }
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (u && db) {
-        await ensureUserDoc(db, u.uid, u.displayName ?? '朋友', u.email ?? '')
+    if (!auth) {
+      setUser(null)
+      setStatus('loading')
+      return
+    }
+
+    let active = true
+    let unsubscribe: (() => void) | undefined
+    setStatus('loading')
+
+    const restoreSession = async () => {
+      try {
+        await setPersistence(auth, browserLocalPersistence)
+      } catch (error) {
+        console.warn('無法啟用 Firebase 本機登入持久化：', error)
       }
-      setUser(u)
-      setStatus(u ? 'authenticated' : 'unauthenticated')
-    })
-    return unsub
+
+      if (!active) return
+
+      unsubscribe = onAuthStateChanged(auth, async (u) => {
+        if (u && db) {
+          try {
+            await ensureUserDoc(db, u)
+          } catch (error) {
+            console.error('無法同步 Firestore 使用者資料：', error)
+          }
+        }
+
+        if (!active) return
+        setUser(u)
+        setStatus(u ? 'authenticated' : 'unauthenticated')
+      }, error => {
+        console.error('無法恢復 Firebase 登入狀態：', error)
+        if (!active) return
+        setUser(null)
+        setStatus('unauthenticated')
+      })
+    }
+
+    void restoreSession()
+
+    return () => {
+      active = false
+      unsubscribe?.()
+    }
   }, [auth, db])
 
   const login = async (email: string, password: string) => {
@@ -38,7 +75,7 @@ export function useAuth(auth: Auth | null, db: Firestore | null) {
     if (!auth) throw new Error('Firebase 未初始化')
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(cred.user, { displayName: name })
-    if (db) await ensureUserDoc(db, cred.user.uid, name, email)
+    if (db) await ensureUserDoc(db, cred.user)
   }
 
   const loginGoogle = async () => {

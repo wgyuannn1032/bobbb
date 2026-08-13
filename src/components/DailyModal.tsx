@@ -1,6 +1,14 @@
 // src/components/DailyModal.tsx
 // Pop-up modal for daily question: loading → question → reward
 import { useState, useEffect, useRef } from 'react'
+import {
+  IconArrowRight,
+  IconCheck,
+  IconDiamond,
+  IconMessageCircle,
+  IconSparkles,
+  IconX,
+} from '@tabler/icons-react'
 import { DailyQuestion, calcGems } from '../lib/gemini'
 
 type Stage = 'loading' | 'question' | 'reward'
@@ -72,10 +80,13 @@ export default function DailyModal({ question, geminiApiKey, onSubmit, onClose }
         {stage === 'question' && question && (
           <>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold bg-violet-500/20 text-violet-300 px-3 py-1 rounded-full">
-                ✨ 今日一問
+              <span className="flex items-center gap-1 text-xs font-semibold bg-violet-500/20 text-violet-300 px-3 py-1 rounded-full">
+                <IconSparkles size={14} aria-hidden="true" />
+                今日一問
               </span>
-              <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-lg px-1">✕</button>
+              <button onClick={onClose} aria-label="關閉" className="text-slate-500 hover:text-slate-300 p-1 rounded-lg">
+                <IconX size={20} aria-hidden="true" />
+              </button>
             </div>
 
             <div className="inline-block text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full mb-4">
@@ -96,7 +107,9 @@ export default function DailyModal({ question, geminiApiKey, onSubmit, onClose }
             />
 
             <div className={`text-right text-xs mt-1 mb-4 ${remaining === 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-              {remaining === 0 ? '✓ 可以提交了' : `尚需 ${remaining} 字`}
+              {remaining === 0 ? (
+                <span className="inline-flex items-center gap-1"><IconCheck size={14} aria-hidden="true" />可以提交了</span>
+              ) : `尚需 ${remaining} 字`}
             </div>
 
             {/* Gem preview */}
@@ -107,8 +120,8 @@ export default function DailyModal({ question, geminiApiKey, onSubmit, onClose }
                 { len: '100~199 字', gems: 4 },
                 { len: '200+ 字', gems: 5 },
               ].map(({ len, gems }) => (
-                <span key={len} className="bg-violet-500/10 text-violet-300 px-2 py-0.5 rounded-full">
-                  {len} = {gems}💎
+                <span key={len} className="inline-flex items-center gap-1 bg-violet-500/10 text-violet-300 px-2 py-0.5 rounded-full">
+                  {len} = {gems}<IconDiamond size={13} aria-hidden="true" />
                 </span>
               ))}
             </div>
@@ -126,14 +139,17 @@ export default function DailyModal({ question, geminiApiKey, onSubmit, onClose }
         {/* ── REWARD ── */}
         {stage === 'reward' && (
           <div className="flex flex-col items-center text-center py-4 gap-3 animate-fade-in-up">
-            <div className="text-5xl animate-reward-pop">💎💎💎</div>
+            <div className="flex items-center gap-1 text-violet-400 animate-reward-pop">
+              {[0, 1, 2].map(i => <IconDiamond key={i} size={42} stroke={1.6} aria-hidden="true" />)}
+            </div>
             <h2 className="text-2xl font-bold mt-2">太棒了！</h2>
             <p className="text-slate-400 text-sm">你獲得了</p>
             <div className="text-4xl font-extrabold gradient-text-2">{gems} 顆寶石</div>
 
             {feedback && (
-              <div className="bg-[#0f0f1a] border border-[#2d2d44] rounded-xl px-4 py-3 text-sm text-slate-300 leading-relaxed max-w-sm">
-                💬 {feedback}
+              <div className="flex items-start gap-2 bg-[#0f0f1a] border border-[#2d2d44] rounded-xl px-4 py-3 text-sm text-slate-300 leading-relaxed max-w-sm">
+                <IconMessageCircle size={18} className="mt-0.5 flex-shrink-0 text-violet-400" aria-hidden="true" />
+                <span>{feedback}</span>
               </div>
             )}
 
@@ -141,7 +157,7 @@ export default function DailyModal({ question, geminiApiKey, onSubmit, onClose }
               onClick={onClose}
               className="mt-2 w-full max-w-xs py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold hover:opacity-90 transition"
             >
-              繼續探索 →
+              <span className="inline-flex items-center gap-1.5">繼續探索 <IconArrowRight size={18} aria-hidden="true" /></span>
             </button>
           </div>
         )}

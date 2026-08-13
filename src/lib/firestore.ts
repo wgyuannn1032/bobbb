@@ -1,11 +1,11 @@
 // src/lib/firestore.ts  — Firestore CRUD helpers
 
 import {
-  doc, getDoc, setDoc, updateDoc,
+  doc, getDoc, updateDoc, runTransaction,
   collection, addDoc, query, where,
-  orderBy, getDocs, serverTimestamp,
-  limit, Firestore,
+  getDocs, serverTimestamp, Firestore,
 } from 'firebase/firestore'
+import { User } from 'firebase/auth'
 
 export interface UserData {
   displayName:      string
@@ -13,6 +13,10 @@ export interface UserData {
   gems:             number
   streak:           number
   lastAnsweredDate: string | null
+  photoURL?:         string | null
+  providerId?:       string | null
+  createdAt?:        unknown
+  lastLoginAt?:      unknown
 }
 
 export interface AnswerRecord {
@@ -28,22 +32,36 @@ export interface AnswerRecord {
 
 export async function ensureUserDoc(
   db: Firestore,
-  uid: string,
-  displayName: string,
-  email: string
+  user: User
 ): Promise<void> {
-  const ref  = doc(db, 'users', uid)
-  const snap = await getDoc(ref)
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      displayName,
-      email,
+  const ref = doc(db, 'users', user.uid)
+  const identity = {
+    email:      user.email ?? '',
+    photoURL:   user.photoURL ?? null,
+    providerId: user.providerData[0]?.providerId ?? null,
+    lastLoginAt: serverTimestamp(),
+  }
+
+  await runTransaction(db, async transaction => {
+    const snap = await transaction.get(ref)
+
+    if (snap.exists()) {
+      transaction.update(ref, {
+        ...identity,
+        ...(user.displayName ? { displayName: user.displayName } : {}),
+      })
+      return
+    }
+
+    transaction.set(ref, {
+      ...identity,
+      displayName:      user.displayName ?? '朋友',
       gems:             0,
       streak:           0,
       lastAnsweredDate: null,
       createdAt:        serverTimestamp(),
     })
-  }
+  })
 }
 
 export async function getUserData(db: Firestore, uid: string): Promise<UserData> {
@@ -87,12 +105,23 @@ export async function fetchAnswers(
   uid: string,
   max: number = 50
 ): Promise<AnswerRecord[]> {
-  const q    = query(
+  const q = query(
     collection(db, 'answers'),
-    where('uid', '==', uid),
-    orderBy('createdAt', 'desc'),
-    limit(max)
+    where('uid', '==', uid)
   )
   const snap = await getDocs(q)
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as AnswerRecord))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as AnswerRecord))
+    .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
+    .slice(0, max)
+}
+
+function timestampMillis(value: unknown): number {
+  if (value && typeof value === 'object' && 'toMillis' in value) {
+    const toMillis = (value as { toMillis?: unknown }).toMillis
+    if (typeof toMillis === 'function') {
+      return toMillis.call(value) as number
+    }
+  }
+  return 0
 }
