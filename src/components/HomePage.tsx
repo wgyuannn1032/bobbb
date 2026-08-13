@@ -18,6 +18,8 @@ import {
   IconUserEdit,
   IconX,
   IconMoodSmile,
+  IconShoppingCart,
+  IconPaw,
 } from '@tabler/icons-react'
 import {
   getUserData,
@@ -27,6 +29,7 @@ import {
   AnswerRecord,
   saveAnswer,
   rewardUser,
+  rgbToHex,
 } from '../lib/firestore'
 import { fetchDailyQuestions, DailyQuestion, todayKey, yesterdayKey, fetchAIFeedback } from '../lib/gemini'
 import { AppConfig } from '../lib/firebase'
@@ -36,6 +39,8 @@ import WishGamePage from './WishGamePage'
 import AppNav from './AppNav'
 import MoodPage from './MoodPage'
 import ProfileModal from './ProfileModal'
+import ShopPage, { SHOP_COSTUMES } from './ShopPage'
+import PetPage from './PetPage'
 
 interface Props {
   user:   User
@@ -45,7 +50,7 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'mood' | 'questions' | 'wish' | 'flip'
+type View = 'home' | 'mood' | 'questions' | 'wish' | 'flip' | 'shop' | 'pet'
 type QuestionTab = 'checkin' | 'history' | 'community'
 
 const GAMES = [
@@ -82,6 +87,18 @@ const TOOLS = [
     label: '情緒打卡',
     color: 'text-rose-400',
   },
+  {
+    view: 'pet' as View,
+    icon: <IconPaw size={20} aria-hidden="true" />,
+    label: '我的寵物',
+    color: 'text-emerald-400',
+  },
+  {
+    view: 'shop' as View,
+    icon: <IconShoppingCart size={20} aria-hidden="true" />,
+    label: '造型商城',
+    color: 'text-amber-400',
+  },
 ]
 
 export default function HomePage({ user, db, config, onSaveProfile, onLogout }: Props) {
@@ -101,11 +118,13 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 
   useEffect(() => {
     const titles: Record<View, string> = {
-      home: 'DailyGem',
+      home:      'DailyGem',
       questions: '每日問答｜DailyGem',
-      mood: '情緒打卡｜DailyGem',
-      wish: '流星許願樹｜DailyGem',
-      flip: '星際花園翻翻看｜DailyGem',
+      mood:      '情緒打卡｜DailyGem',
+      wish:      '流星許願樹｜DailyGem',
+      flip:      '星際花園翻翻看｜DailyGem',
+      shop:      '造型商城｜DailyGem',
+      pet:       '我的寵物｜DailyGem',
     }
     document.title = titles[view]
   }, [view])
@@ -179,6 +198,10 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
     await loadData()
     showToast(`獲得 ${gems} 顆寶石！`, 'success')
     return feedback
+  }
+
+  const handleUserDataChanged = (updated: Partial<UserData>) => {
+    setUserData(ud => ud ? { ...ud, ...updated } : ud)
   }
 
   const avatarUrl =
@@ -305,9 +328,15 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 				<AppNav
 					onOpenSidebar={() => setSidebarOpen(true)}
 					onBack={view !== "home" ? () => setView("home") : undefined}
-						title={
-							view === "questions" ? "每日問答" : view === "mood" ? "情緒打卡" : view === "wish" ? "流星許願樹" : view === "flip" ? "星際花園" : undefined
-						}
+					title={
+						view === "questions" ? "每日問答"
+						: view === "mood"      ? "情緒打卡"
+						: view === "wish"      ? "流星許願樹"
+						: view === "flip"      ? "星際花園"
+						: view === "shop"      ? "造型商城"
+						: view === "pet"       ? "我的寵物"
+						: undefined
+					}
 					titleIcon={
 						view === "questions" ? (
 							<IconSparkles size={18} className="app-accent" aria-hidden="true" />
@@ -317,12 +346,32 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							<IconStars size={18} className="text-yellow-400" aria-hidden="true" />
 						) : view === "flip" ? (
 							<IconCards size={18} className="text-violet-400" aria-hidden="true" />
+						) : view === "shop" ? (
+							<IconShoppingCart size={18} className="text-amber-500" aria-hidden="true" />
+						) : view === "pet" ? (
+							<IconPaw size={18} className="text-emerald-500" aria-hidden="true" />
 						) : undefined
 					}
 				>
 					<div className="flex items-center gap-3 relative">
-						{/* Game coin counter */}
-						<GameCoins />
+						{/* Game coin counter (synced with Firestore) */}
+						<div className="group relative">
+							<div
+								className="app-surface flex h-9 items-center gap-1.5 border px-4 rounded-full text-sm font-semibold"
+								tabIndex={0}
+								aria-describedby="coin-tooltip"
+							>
+								<IconCoin size={18} stroke={1.8} color="#f59e0b" aria-hidden="true" />
+								<span style={{ color: '#e65100' }}>{userData?.coins ?? 0}</span>
+							</div>
+							<span
+								id="coin-tooltip"
+								role="tooltip"
+								className="pointer-events-none absolute right-0 top-full z-50 mt-2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+							>
+								遊戲金幣
+							</span>
+						</div>
 						{/* Gem counter */}
 						<div className="group relative">
 							<div
@@ -411,6 +460,22 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 					<WishGamePage />
 				) : view === "flip" ? (
 					<FlipGamePage />
+				) : view === "shop" && userData ? (
+					<ShopPage
+						db={db}
+						uid={user.uid}
+						userData={userData}
+						onUserDataChanged={handleUserDataChanged}
+						onShowToast={showToast}
+					/>
+				) : view === "pet" && userData ? (
+					<PetPage
+						db={db}
+						uid={user.uid}
+						userData={userData}
+						onUserDataChanged={handleUserDataChanged}
+						onShowToast={showToast}
+					/>
 				) : (
 					<main className="max-w-xl mx-auto px-4 py-6 space-y-5 w-full">
 						{/* Greeting */}
@@ -421,7 +486,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							</p>
 						</div>
 
-						{/* Gem card */}
+						{/* Stats card: gems + coins + streak */}
 						<div className="app-gem-card rounded-2xl p-5 border flex items-center justify-between">
 							<div className="flex items-center gap-4">
 								<IconDiamond
@@ -438,6 +503,15 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 								</div>
 							</div>
 							<div className="text-center">
+								<div className="text-2xl font-extrabold" style={{ color: '#e65100' }}>
+									{userData?.coins ?? 0}
+								</div>
+								<div className="app-text-muted flex items-center justify-center gap-1 text-xs">
+									金幣{" "}
+									<IconCoin size={12} color="#f59e0b" aria-hidden="true" />
+								</div>
+							</div>
+							<div className="text-center">
 								<div className="app-warning text-3xl font-extrabold">
 									{userData?.streak ?? 0}
 								</div>
@@ -451,6 +525,87 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 								</div>
 							</div>
 						</div>
+
+						{/* Pet preview shortcut */}
+						{userData && (
+							<button
+								type="button"
+								onClick={() => setView("pet")}
+								className="app-surface group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition hover:border-emerald-400"
+							>
+								<div className="absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400" />
+								<div className="flex items-center gap-3">
+									<span
+										className="flex h-11 w-11 items-center justify-center rounded-xl overflow-hidden bg-emerald-500/10 relative"
+										aria-hidden="true"
+									>
+										<span
+											className="absolute inset-0 rounded-xl"
+											style={{
+												backgroundColor: rgbToHex(
+													userData.petColorR ?? 180,
+													userData.petColorG ?? 150,
+													userData.petColorB ?? 200
+												),
+												opacity: 0.6,
+											}}
+										/>
+										<IconPaw size={22} className="text-emerald-600 relative z-10" />
+									</span>
+									<div className="min-w-0 flex-1">
+										<p className="app-text flex items-center gap-1.5 text-sm font-semibold">
+											我的寵物
+											{userData.equippedCostume && (
+												<span className="text-base ml-1">
+													{SHOP_COSTUMES.find(c => c.id === userData.equippedCostume)?.preview}
+												</span>
+											)}
+										</p>
+										<p className="app-text-muted mt-0.5 text-xs">
+											餵食寶石改變顏色
+											{userData.petEmotion
+												? `，上次情緒：${({ happy:'快樂', sad:'悲傷', angry:'憤怒', fearful:'恐懼' } as Record<string,string>)[userData.petEmotion] ?? userData.petEmotion}`
+												: ''}
+										</p>
+									</div>
+									<IconArrowRight
+										size={18}
+										className="app-text-muted flex-shrink-0 transition group-hover:text-emerald-400"
+										aria-hidden="true"
+									/>
+								</div>
+							</button>
+						)}
+
+						{/* Shop shortcut */}
+						<button
+							type="button"
+							onClick={() => setView("shop")}
+							className="app-surface group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition hover:border-amber-400"
+						>
+							<div className="absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-400" />
+							<div className="flex items-center gap-3">
+								<span
+									className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500"
+									aria-hidden="true"
+								>
+									<IconShoppingCart size={25} />
+								</span>
+								<div className="min-w-0 flex-1">
+									<p className="app-text flex items-center gap-1.5 text-sm font-semibold">
+										造型商城
+									</p>
+									<p className="app-text-muted mt-0.5 text-xs">
+										金幣購買特殊造型，目前有 {userData?.coins ?? 0} 枚金幣
+									</p>
+								</div>
+								<IconArrowRight
+									size={18}
+									className="app-text-muted flex-shrink-0 transition group-hover:text-amber-400"
+									aria-hidden="true"
+								/>
+							</div>
+						</button>
 
 						{/* Daily question shortcut */}
 						<button
@@ -561,12 +716,12 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
   );
 }
 
-function GameCoins() {
+// GameCoins component removed — coins are now read from Firestore via userData
+function _GameCoins_UNUSED() {
   const [coins, setCoins] = useState<number>(() =>
     parseInt(localStorage.getItem('game_coins') ?? '0', 10)
   )
 
-  // 每次分頁切回來時重新讀取（遊戲分頁關閉後同步最新值）
   useEffect(() => {
     const sync = () => setCoins(parseInt(localStorage.getItem('game_coins') ?? '0', 10))
     window.addEventListener('focus', sync)

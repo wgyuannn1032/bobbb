@@ -12,12 +12,28 @@ export interface UserData {
   description?:     string
   email:            string
   gems:             number
+  coins:            number
   streak:           number
   lastAnsweredDate: string | null
   photoURL?:         string | null
   providerId?:       string | null
   createdAt?:        unknown
   lastLoginAt?:      unknown
+  petEmotion?:       string | null
+  petColorR?:        number
+  petColorG?:        number
+  petColorB?:        number
+  ownedCostumes?:    string[]
+  equippedCostume?:  string | null
+}
+
+export interface CostumeItem {
+  id:          string
+  name:        string
+  description: string
+  price:       number
+  preview:     string
+  rarity:      'common' | 'rare' | 'epic' | 'legendary'
 }
 
 export interface AnswerRecord {
@@ -62,19 +78,41 @@ export async function ensureUserDoc(
     }
 
     transaction.set(ref, {
-      ...identity,
-      displayName:      user.displayName ?? '朋友',
-      gems:             0,
-      streak:           0,
-      lastAnsweredDate: null,
-      createdAt:        serverTimestamp(),
-    })
+        ...identity,
+        displayName:      user.displayName ?? '朋友',
+        gems:             0,
+        coins:            0,
+        streak:           0,
+        lastAnsweredDate: null,
+        petColorR:        180,
+        petColorG:        150,
+        petColorB:        200,
+        petEmotion:       null,
+        ownedCostumes:    [],
+        equippedCostume:  null,
+        createdAt:        serverTimestamp(),
+      })
   })
 }
 
 export async function getUserData(db: Firestore, uid: string): Promise<UserData> {
   const snap = await getDoc(doc(db, 'users', uid))
-  return (snap.data() ?? { displayName: '朋友', email: '', gems: 0, streak: 0, lastAnsweredDate: null }) as UserData
+  const data = snap.data() ?? {}
+  return {
+    displayName:     '朋友',
+    email:           '',
+    gems:            0,
+    coins:           0,
+    streak:          0,
+    lastAnsweredDate: null,
+    petColorR:       180,
+    petColorG:       150,
+    petColorB:       200,
+    petEmotion:      null,
+    ownedCostumes:   [],
+    equippedCostume: null,
+    ...data,
+  } as UserData
 }
 
 export async function saveAnswer(
@@ -284,4 +322,101 @@ export async function toggleTreeholeReaction(
   delta: 1 | -1
 ): Promise<void> {
   await updateDoc(doc(db, 'treehole', postId), { [field]: increment(delta) })
+}
+
+// ── Shop & Pet Color System ──────────────────────────────────
+
+// 情緒 RGB 偏移規則（來自設計表格）
+export const EMOTION_RGB_DELTAS: Record<string, { r: number; g: number; b: number; label: string }> = {
+  happy:   { r: +3,  g: +3,  b: -2, label: '快樂' },
+  sad:     { r: -3,  g: -3,  b: +4, label: '悲傷' },
+  angry:   { r: +6,  g: -3,  b: -3, label: '憤怒' },
+  fearful: { r: -4,  g: -4,  b: -1, label: '恐懼' },
+}
+
+/** 將寶石餵食應用到寵物顏色，每顆寶石放大一次 delta */
+export function applyEmotionToColor(
+  baseR: number, baseG: number, baseB: number,
+  emotion: string,
+  gemCount: number
+): { r: number; g: number; b: number } {
+  const delta = EMOTION_RGB_DELTAS[emotion]
+  if (!delta) return { r: baseR, g: baseG, b: baseB }
+  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)))
+  return {
+    r: clamp(baseR + delta.r * gemCount),
+    g: clamp(baseG + delta.g * gemCount),
+    b: clamp(baseB + delta.b * gemCount),
+  }
+}
+
+/** 以 RGB 建構 hex 色碼 */
+export function rgbToHex(r: number, g: number, b: number): string {
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+}
+
+/** 用寶石餵食寵物，更新 petColorR/G/B 到 Firestore */
+export async function feedPetGems(
+  db: Firestore,
+  uid: string,
+  emotion: string,
+  gemCount: number,
+  currentData: UserData
+): Promise<{ newGems: number; newPetR: number; newPetG: number; newPetB: number }> {
+  const baseR = currentData.petColorR ?? 180
+  const baseG = currentData.petColorG ?? 150
+  const baseB = currentData.petColorB ?? 200
+  const { r, g, b } = applyEmotionToColor(baseR, baseG, baseB, emotion, gemCount)
+  const newGems = Math.max(0, (currentData.gems ?? 0) - gemCount)
+  await updateDoc(doc(db, 'users', uid), {
+    gems:       newGems,
+    petColorR:  r,
+    petColorG:  g,
+    petColorB:  b,
+    petEmotion: emotion,
+  })
+  return { newGems, newPetR: r, newPetG: g, newPetB: b }
+}
+
+/** 用金幣購買造型 */
+export async function purchaseCostume(
+  db: Firestore,
+  uid: string,
+  costumeId: string,
+  price: number,
+  currentData: UserData
+): Promise<{ newCoins: number; ownedCostumes: string[] }> {
+  const currentCoins = currentData.coins ?? 0
+  if (currentCoins < price) throw new Error('金幣不足')
+  const owned = currentData.ownedCostumes ?? []
+  if (owned.includes(costumeId)) throw new Error('已擁有此造型')
+  const newCoins = currentCoins - price
+  const newOwned = [...owned, costumeId]
+  await updateDoc(doc(db, 'users', uid), {
+    coins:         newCoins,
+    ownedCostumes: newOwned,
+  })
+  return { newCoins, ownedCostumes: newOwned }
+}
+
+/** 裝備造型 */
+export async function equipCostume(
+  db: Firestore,
+  uid: string,
+  costumeId: string | null
+): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { equippedCostume: costumeId })
+}
+
+/** 新增金幣（遊戲或其他來源） */
+export async function addCoins(
+  db: Firestore,
+  uid: string,
+  amount: number
+): Promise<number> {
+  const snap = await getDoc(doc(db, 'users', uid))
+  const current = (snap.data()?.coins ?? 0) as number
+  const newCoins = current + amount
+  await updateDoc(doc(db, 'users', uid), { coins: newCoins })
+  return newCoins
 }
