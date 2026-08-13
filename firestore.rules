@@ -50,5 +50,47 @@ service cloud.firestore {
       allow delete: if request.auth != null
         && resource.data.uid == request.auth.uid;
     }
+
+    // One mood check-in per user and date. The app uses {uid}_{YYYY-MM-DD}
+    // as the document ID; legacy auto-ID records remain readable.
+    match /moods/{moodId} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && moodId == request.auth.uid + '_' + request.resource.data.date
+        && request.resource.data.keys().hasOnly([
+          'uid', 'date', 'mood', 'note', 'createdAt'
+        ])
+        && request.resource.data.date is string
+        && request.resource.data.date.size() == 10
+        && request.resource.data.mood is int
+        && request.resource.data.mood >= 1
+        && request.resource.data.mood <= 5
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 300
+        && request.resource.data.createdAt == request.time;
+
+      allow read: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.keys().hasOnly([
+          'uid', 'date', 'mood', 'note', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.mood is int
+        && request.resource.data.mood >= 1
+        && request.resource.data.mood <= 5
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 300
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['mood', 'note', 'updatedAt']);
+
+      allow delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+    }
   }
 }

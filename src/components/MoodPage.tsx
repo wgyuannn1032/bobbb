@@ -8,7 +8,7 @@ import {
   IconCalendar, IconTrendingUp, IconNotes,
 } from '@tabler/icons-react'
 import {
-  saveMoodCheckIn, fetchMoods, getTodayMood,
+  saveMoodCheckIn, updateMoodCheckIn, fetchMoods, getTodayMood,
   MoodLevel, MoodRecord,
 } from '../lib/firestore'
 import { todayKey } from '../lib/gemini'
@@ -204,7 +204,11 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
     ])
     setRecords(all)
     setTodayMood(td)
-    if (td) setSelected(td.mood)
+    if (td) {
+      setSelected(td.mood)
+      setNote(td.note)
+      setShowNote(td.note.length > 0)
+    }
   }, [db, uid, today])
 
   useEffect(() => {
@@ -221,11 +225,13 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
     if (!selected) return
     setSaving(true)
     try {
-      await saveMoodCheckIn(db, { uid, date: today, mood: selected, note: note.trim() })
+      if (todayMood?.id) {
+        await updateMoodCheckIn(db, todayMood.id, selected, note)
+      } else {
+        await saveMoodCheckIn(db, { uid, date: today, mood: selected, note: note.trim() })
+      }
       await loadData()
-      setNote('')
-      setShowNote(false)
-      showToast('情緒打卡成功！')
+      showToast(todayMood ? '今日情緒已更新！' : '情緒打卡成功！')
     } catch (err) {
       console.error(err)
       showToast('儲存失敗，請稍後再試')
@@ -236,6 +242,7 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
 
   const alreadyCheckedIn = todayMood !== null
   const todayCfg = todayMood ? getMoodConfig(todayMood.mood) : null
+  const hasChanges = !todayMood || selected !== todayMood.mood || note.trim() !== todayMood.note
 
   return (
     <div className={embedded ? 'flex w-full flex-col' : 'app-page flex min-h-screen flex-col'}>
@@ -285,7 +292,7 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
                       <p className={`font-semibold ${todayCfg.color}`}>
                         今天的心情：{todayCfg.label}
                       </p>
-                      <p className="app-text-muted text-sm mt-0.5">今日已打卡完成</p>
+                      <p className="app-text-muted text-sm mt-0.5">今日已打卡，可隨時修改</p>
                       {todayMood.note && (
                         <p className="app-text-secondary text-sm mt-1.5 leading-relaxed">
                           📝 {todayMood.note}
@@ -311,14 +318,13 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
                       return (
                         <button
                           key={m.level}
-                          onClick={() => !alreadyCheckedIn && setSelected(m.level)}
-                          disabled={alreadyCheckedIn}
+                          onClick={() => setSelected(m.level)}
                           className={`flex flex-col items-center gap-2 py-4 rounded-2xl border-2 transition
                             ${isSelected
                               ? `${m.bg} ${m.border} ${m.color} scale-105 shadow-md`
                               : 'app-surface border-[var(--app-border)] app-text-muted hover:scale-105'
                             }
-                            ${alreadyCheckedIn ? 'cursor-default' : 'cursor-pointer'}`}
+                            cursor-pointer`}
                         >
                           <span className={isSelected ? m.color : 'app-text-muted'}>
                             {m.icon}
@@ -331,7 +337,7 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
                 </div>
 
                 {/* Optional note */}
-                {!alreadyCheckedIn && selected && (
+                {selected && (
                   <div className="animate-fade-in-up">
                     <button
                       onClick={() => setShowNote(v => !v)}
@@ -354,10 +360,10 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
                 )}
 
                 {/* Submit button */}
-                {!alreadyCheckedIn && (
+                {selected && (
                   <button
                     onClick={handleSave}
-                    disabled={!selected || saving}
+                    disabled={saving || !hasChanges}
                     className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition flex items-center justify-center gap-2"
                   >
                     {saving ? (
@@ -368,7 +374,7 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
                     ) : (
                       <>
                         <IconCheck size={18} />
-                        完成打卡
+                        {alreadyCheckedIn ? '儲存今日變更' : '完成打卡'}
                       </>
                     )}
                   </button>

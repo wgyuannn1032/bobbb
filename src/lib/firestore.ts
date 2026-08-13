@@ -1,7 +1,7 @@
 // src/lib/firestore.ts  — Firestore CRUD helpers
 
 import {
-  doc, getDoc, updateDoc, deleteDoc, runTransaction,
+  doc, getDoc, setDoc, updateDoc, deleteDoc, runTransaction,
   collection, addDoc, query, where,
   getDocs, serverTimestamp, writeBatch, Firestore,
 } from 'firebase/firestore'
@@ -222,9 +222,22 @@ export async function saveMoodCheckIn(
   db:     Firestore,
   record: Omit<MoodRecord, 'id' | 'createdAt'>
 ): Promise<void> {
-  await addDoc(collection(db, 'moods'), {
+  await setDoc(doc(db, 'moods', moodDocumentId(record.uid, record.date)), {
     ...record,
     createdAt: serverTimestamp(),
+  })
+}
+
+export async function updateMoodCheckIn(
+  db: Firestore,
+  recordId: string,
+  mood: MoodLevel,
+  note: string
+): Promise<void> {
+  await updateDoc(doc(db, 'moods', recordId), {
+    mood,
+    note: note.trim(),
+    updatedAt: serverTimestamp(),
   })
 }
 
@@ -246,6 +259,7 @@ export async function getTodayMood(
   uid:   string,
   today: string
 ): Promise<MoodRecord | null> {
+  // Querying also keeps records created with the previous auto-ID format readable.
   const q    = query(
     collection(db, 'moods'),
     where('uid',  '==', uid),
@@ -255,6 +269,10 @@ export async function getTodayMood(
   if (snap.empty) return null
   const d = snap.docs[0]
   return { id: d.id, ...d.data() } as MoodRecord
+}
+
+function moodDocumentId(uid: string, date: string): string {
+  return `${uid}_${date}`
 }
 
 function timestampMillis(value: unknown): number {

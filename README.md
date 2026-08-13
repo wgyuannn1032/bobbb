@@ -94,6 +94,14 @@ answers/{auto-id}
   isPublic:  boolean
   createdAt: Timestamp
   updatedAt: Timestamp | null
+
+moods/{uid}_{YYYY-MM-DD}
+  uid:       string
+  date:      string   (YYYY-MM-DD)
+  mood:      number   (1–5)
+  note:      string
+  createdAt: Timestamp
+  updatedAt: Timestamp | null
 ```
 
 ## 專案成員
