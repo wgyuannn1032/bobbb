@@ -148,7 +148,10 @@
     <span style="color:#888;font-size:.9rem">金幣</span>
   </div>
   <div class="msg" id="res-msg"></div>
-  <button class="btn-restart" onclick="restartGame()">再玩一次</button>
+  <div style="display:flex;gap:12px;margin-top:4px">
+    <button class="btn-restart" onclick="restartGame()">再玩一次</button>
+    <button class="btn-restart" style="background:#f3e8ff;color:#7c5cd8" onclick="window.close()">回主頁面</button>
+  </div>
 </div>
 
 <footer>Made with IBM Bob</footer>
@@ -169,14 +172,17 @@ let wishSpawnTimer = null;
 let rafId = null;
 let startTime = 0;
 let timerInterval = null;
-let totalCoins = 0;
+let totalCoins = parseInt(localStorage.getItem("game_coins") ?? "0", 10);
 let keysDown = {};
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 function elId(id) { return document.getElementById(id); }
-function updateCoinBadge() { elId("total-coins-display").textContent = totalCoins; }
+function updateCoinBadge() {
+  localStorage.setItem("game_coins", String(totalCoins));
+  elId("total-coins-display").textContent = totalCoins;
+}
 
 function updateHUD(score) {
   elId("hud-score").textContent = score;
@@ -312,7 +318,7 @@ function showResult(score) {
     const r = calculateRewardCoins(score, dur, elId("checkin-cb").checked);
     elId("res-coins").textContent = r.earned;
     elId("res-msg").textContent = r.message + (r.bonus ? "（已享打卡 1.2× 加成）" : "");
-    totalCoins = Math.max(0, totalCoins - lastEarned + r.earned);
+    totalCoins = Math.max(0, (parseInt(localStorage.getItem("game_coins") ?? "0", 10)) - lastEarned + r.earned);
     lastEarned = r.earned;
     updateCoinBadge();
   }

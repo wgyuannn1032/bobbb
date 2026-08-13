@@ -24,6 +24,36 @@
   }
   h1 { font-size: 1.4rem; font-weight: 700; color: #7c5cd8; margin-bottom: 4px; text-shadow: 0 1px 4px #c7ceea; }
   .subtitle { font-size: .85rem; color: #b39ddb; margin-bottom: 14px; }
+  /* ── 煙火 canvas ── */
+  #firework-canvas {
+    display: none;
+    position: fixed; inset: 0; z-index: 500;
+    pointer-events: none;
+    width: 100%; height: 100%;
+  }
+  /* 全螢幕完成提示 */
+  #complete-banner {
+    display: none;
+    position: fixed; inset: 0; z-index: 501;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  #complete-banner.show { display: flex; }
+  #complete-banner .banner-box {
+    background: rgba(255,255,255,.92);
+    border: 3px solid #c7ceea; border-radius: 24px;
+    padding: 28px 48px; text-align: center;
+    box-shadow: 0 8px 40px rgba(124,92,216,.25);
+    animation: bannerPop .45s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  #complete-banner .banner-box .icon { font-size: 3rem; line-height: 1; }
+  #complete-banner .banner-box h2 { font-size: 1.5rem; font-weight: 800; color: #7c5cd8; margin: 8px 0 4px; }
+  #complete-banner .banner-box p  { font-size: .95rem; color: #b39ddb; }
+  @keyframes bannerPop {
+    0%   { opacity: 0; transform: scale(.6); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
   #diff-panel {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
     background: #fff; border: 2px solid #c7ceea; border-radius: 18px;
@@ -149,7 +179,20 @@
   <div class="msg" id="res-msg"></div>
   <div class="btn-row">
     <button class="btn-action btn-restart" id="btn-restart">再玩一次</button>
-    <button class="btn-action btn-home"    onclick="goHome()">回首頁</button>
+    <button class="btn-action btn-home"    onclick="goHome()">選難度</button>
+    <button class="btn-action btn-home"    onclick="window.close()">回主頁面</button>
+  </div>
+</div>
+
+<!-- 煙火 canvas（全螢幕覆蓋） -->
+<canvas id="firework-canvas"></canvas>
+
+<!-- 完成提示橫幅 -->
+<div id="complete-banner">
+  <div class="banner-box">
+    <div class="icon">🎉</div>
+    <h2>太厲害了！全部配對完成！</h2>
+    <p id="bonus-text">額外獎勵 +100 分</p>
   </div>
 </div>
 
@@ -162,11 +205,99 @@ const GAME_DURATION = 45;
 let flipState = { board:[], cols:6, fCard:null, fId:null, lock:false, flips:0, score:0, okPairs:0, totalPairs:0 };
 let timerInterval = null;
 let startTime = 0;
-let totalCoins = 0;
+let totalCoins = parseInt(localStorage.getItem("game_coins") ?? "0", 10);
 let currentCols = 6, currentRows = 4;
 
+// ── 煙火系統 ──────────────────────────────────────
+const fwCanvas = document.getElementById("firework-canvas");
+const fwCtx    = fwCanvas.getContext("2d");
+let fwParticles = [];
+let fwRafId     = null;
+
+function fwResize() {
+  fwCanvas.width  = window.innerWidth;
+  fwCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", fwResize);
+
+function launchFirework() {
+  const cx = fwCanvas.width  * (0.2 + Math.random() * 0.6);
+  const cy = fwCanvas.height * (0.1 + Math.random() * 0.5);
+  const hue = Math.floor(Math.random() * 360);
+  const count = 60 + Math.floor(Math.random() * 30);
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 / count) * i;
+    const speed = 3 + Math.random() * 5;
+    fwParticles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1,
+      r: 3 + Math.random() * 3,
+      hue: hue + Math.random() * 40 - 20,
+      life: 1,
+    });
+  }
+}
+
+function runFireworks(durationMs, onDone) {
+  fwResize();
+  fwCanvas.style.display = "block";
+  fwParticles = [];
+  const startTs = Date.now();
+  let lastLaunch = 0;
+
+  function tick() {
+    const elapsed = Date.now() - startTs;
+
+    // 每 350ms 發射一束
+    if (elapsed - lastLaunch > 350) {
+      launchFirework();
+      if (elapsed < durationMs * 0.7) launchFirework(); // 前 70% 雙束
+      lastLaunch = elapsed;
+    }
+
+    // 更新粒子
+    fwParticles.forEach(p => {
+      p.x    += p.vx;
+      p.y    += p.vy;
+      p.vy   += 0.12;
+      p.vx   *= 0.96;
+      p.vy   *= 0.96;
+      p.life -= 0.018;
+    });
+    fwParticles = fwParticles.filter(p => p.life > 0);
+
+    // 繪製（帶殘影）
+    fwCtx.fillStyle = "rgba(0,0,0,0.18)";
+    fwCtx.fillRect(0, 0, fwCanvas.width, fwCanvas.height);
+    fwParticles.forEach(p => {
+      fwCtx.save();
+      fwCtx.globalAlpha = p.life;
+      fwCtx.beginPath();
+      fwCtx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+      fwCtx.fillStyle = `hsl(${p.hue},90%,65%)`;
+      fwCtx.fill();
+      fwCtx.restore();
+    });
+
+    if (elapsed < durationMs) {
+      fwRafId = requestAnimationFrame(tick);
+    } else {
+      // 時間到，強制結束並跳結算
+      fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+      fwCanvas.style.display = "none";
+      fwParticles = [];
+      onDone();
+    }
+  }
+  fwRafId = requestAnimationFrame(tick);
+}
+
 function elId(id) { return document.getElementById(id); }
-function updateCoinBadge() { elId("total-coins-display").textContent = totalCoins; }
+function updateCoinBadge() {
+  localStorage.setItem("game_coins", String(totalCoins));
+  elId("total-coins-display").textContent = totalCoins;
+}
 
 function updateHUD(score) {
   elId("hud-score").textContent = score;
@@ -255,7 +386,22 @@ function flipCard(card, id) {
     spawnFloatText("+30", rect.left - wrapRect.left + 20, rect.top - wrapRect.top);
     flipState.fCard = null; flipState.fId = null;
     updateHUD(flipState.score);
-    if (flipState.okPairs === flipState.totalPairs) setTimeout(() => showResult(flipState.score), 500);
+    if (flipState.okPairs === flipState.totalPairs) {
+      // 全部配對完成：加 100 分獎勵，播煙火後才進結算
+      flipState.score += 100;
+      updateHUD(flipState.score);
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+      // 顯示完成橫幅
+      const banner = elId("complete-banner");
+      elId("bonus-text").textContent = "額外獎勵 +100 分 🎊";
+      banner.classList.add("show");
+
+      setTimeout(() => {
+        banner.classList.remove("show");
+        runFireworks(5000, () => showResult(flipState.score));
+      }, 900);
+    }
   } else {
     flipState.lock = true;
     const prev = flipState.fCard;
@@ -269,6 +415,7 @@ function flipCard(card, id) {
 
 function showResult(score) {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  elId("complete-banner").classList.remove("show");
   elId("game-wrap").classList.remove("active");
   const dur = Math.floor((Date.now() - startTime) / 1000);
   elId("res-info").textContent = `遊玩時間：${dur} 秒`;
@@ -279,7 +426,7 @@ function showResult(score) {
     const r = calculateRewardCoins(score, dur, elId("checkin-cb").checked);
     elId("res-coins").textContent = r.earned;
     elId("res-msg").textContent = r.message + (r.bonus ? "（已享打卡 1.2× 加成）" : "");
-    totalCoins = Math.max(0, totalCoins - lastEarned + r.earned);
+    totalCoins = Math.max(0, (parseInt(localStorage.getItem("game_coins") ?? "0", 10)) - lastEarned + r.earned);
     lastEarned = r.earned;
     updateCoinBadge();
   }
@@ -311,6 +458,10 @@ function startFlip(cols, rows) {
 
 function goHome() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  if (fwRafId) { cancelAnimationFrame(fwRafId); fwRafId = null; }
+  fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+  fwCanvas.style.display = "none";
+  elId("complete-banner").classList.remove("show");
   elId("game-wrap").classList.remove("active");
   elId("result-panel").classList.remove("active");
   elId("diff-panel").style.display = "flex";

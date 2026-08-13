@@ -213,6 +213,9 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 
 				{/* Games & Tools section */}
 				<nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+					{/* 遊戲金幣顯示 */}
+					<GameCoins />
+
 					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 tracking-wider">
 						💛 心情工具
 					</p>
@@ -604,3 +607,24 @@ function PublicAnswerCard({ record }: { record: AnswerRecord }) {
     </article>
   )
 }
+
+function GameCoins() {
+  const [coins, setCoins] = useState<number>(() =>
+    parseInt(localStorage.getItem('game_coins') ?? '0', 10)
+  )
+
+  // 每次分頁切回來時重新讀取（遊戲分頁關閉後同步最新值）
+  useEffect(() => {
+    const sync = () => setCoins(parseInt(localStorage.getItem('game_coins') ?? '0', 10))
+    window.addEventListener('focus', sync)
+    return () => window.removeEventListener('focus', sync)
+  }, [])
+
+  return (
+    <div className="app-surface border rounded-xl px-3 py-2.5 mb-3 flex items-center justify-between">
+      <span className="app-text-muted text-xs font-semibold">🪙 遊戲金幣</span>
+      <span className="text-sm font-bold" style={{ color: '#e65100' }}>{coins}</span>
+    </div>
+  )
+}
+
