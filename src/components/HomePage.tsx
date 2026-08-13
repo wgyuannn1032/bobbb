@@ -51,7 +51,7 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'mood' | 'questions' | 'wish' | 'flip' | 'shop' | 'pet'
+type View = 'home' | 'mood' | 'questions' | 'bubble' | 'wish' | 'flip' | 'shop' | 'pet'
 type QuestionTab = 'checkin' | 'history' | 'community'
 
 const GAMES = [
@@ -122,6 +122,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
       home:      'DailyGem',
       questions: '每日問答｜DailyGem',
       mood:      '情緒打卡｜DailyGem',
+      bubble:    '泡泡啵啵樂｜DailyGem',
       wish:      '流星許願樹｜DailyGem',
       flip:      '星際花園翻翻看｜DailyGem',
       shop:      '造型商城｜DailyGem',
@@ -327,6 +328,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 					title={
 						view === "questions" ? "每日問答"
 						: view === "mood"      ? "情緒打卡"
+						: view === "bubble"    ? "泡泡啵啵樂"
 						: view === "wish"      ? "流星許願樹"
 						: view === "flip"      ? "星際花園"
 						: view === "shop"      ? "造型商城"
@@ -338,6 +340,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 								<IconSparkles size={18} className="app-accent" aria-hidden="true" />
 							) : view === "mood" ? (
 								<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
+							) : view === "bubble" ? (
+								<IconBubble size={18} className="text-pink-400" aria-hidden="true" />
 							) : view === "wish" ? (
 								<IconStars size={18} className="text-yellow-400" aria-hidden="true" />
 							) : view === "flip" ? (
@@ -452,6 +456,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						answered={isQuestionAnswered}
 						onSubmit={handlePageSubmit}
 					/>
+				) : view === "bubble" ? (
+					<BubbleGamePage />
 				) : view === "wish" ? (
 						<WishGamePage />
 					) : view === "flip" ? (

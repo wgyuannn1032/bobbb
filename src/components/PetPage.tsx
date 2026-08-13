@@ -171,18 +171,11 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
         />
         <div className="p-5 flex flex-col items-center gap-4">
           {/* Pet figure */}
-          <div className="relative h-48 w-48" aria-label={`${selectedChar}預覽`}>
-            {/* Base */}
-            <img
-              src={`/character/${selectedChar}base.png`}
-              alt={`${selectedChar}底圖`}
-              className="absolute inset-0 h-full w-full object-contain"
-            />
-            {/* Color layer — blends with mask */}
+          <div className="relative isolate h-48 w-48" aria-label={`${selectedChar}預覽`}>
+            {/* Color layer — clipped to the character silhouette */}
             <div
               style={{
                 backgroundColor: petHex,
-                mixBlendMode: 'multiply',
                 WebkitMaskImage: `url('/character/${selectedChar}mask.png')`,
                 maskImage: `url('/character/${selectedChar}mask.png')`,
                 WebkitMaskSize: 'contain',
@@ -195,7 +188,15 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
               } as React.CSSProperties}
               className="absolute inset-0 h-full w-full"
             />
-            {/* Overlay */}
+            {/* Base layer — preserve the grayscale highlights and shadows */}
+            <img
+              src={`/character/${selectedChar}base.png`}
+              alt=""
+              aria-hidden="true"
+              style={{ mixBlendMode: 'multiply' }}
+              className="absolute inset-0 h-full w-full object-contain"
+            />
+            {/* Overlay — details that should keep their original colors */}
             <img
               src={`/character/${selectedChar}overlay.png`}
               alt={`${selectedChar}頂層`}
