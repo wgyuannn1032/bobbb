@@ -32,6 +32,7 @@ import { fetchDailyQuestions, DailyQuestion, todayKey, yesterdayKey, fetchAIFeed
 import { AppConfig } from '../lib/firebase'
 import DailyQuestionPage from './DailyQuestionPage'
 import FlipGamePage from './FlipGamePage'
+import WishGamePage from './WishGamePage'
 import AppNav from './AppNav'
 import MoodPage from './MoodPage'
 import ProfileModal from './ProfileModal'
@@ -44,7 +45,7 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'mood' | 'questions' | 'flip'
+type View = 'home' | 'mood' | 'questions' | 'wish' | 'flip'
 type QuestionTab = 'checkin' | 'history' | 'community'
 
 const GAMES = [
@@ -55,7 +56,7 @@ const GAMES = [
     color: 'text-pink-400',
   },
   {
-    href: '/games/wish.html',
+    view: 'wish' as View,
     icon: <IconStars size={20} aria-hidden="true" />,
     label: '流星許願樹',
     color: 'text-yellow-400',
@@ -103,6 +104,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
       home: 'DailyGem',
       questions: '每日問答｜DailyGem',
       mood: '情緒打卡｜DailyGem',
+      wish: '流星許願樹｜DailyGem',
       flip: '星際花園翻翻看｜DailyGem',
     }
     document.title = titles[view]
@@ -304,13 +306,15 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 					onOpenSidebar={() => setSidebarOpen(true)}
 					onBack={view !== "home" ? () => setView("home") : undefined}
 						title={
-							view === "questions" ? "每日問答" : view === "mood" ? "情緒打卡" : view === "flip" ? "星際花園" : undefined
+							view === "questions" ? "每日問答" : view === "mood" ? "情緒打卡" : view === "wish" ? "流星許願樹" : view === "flip" ? "星際花園" : undefined
 						}
 					titleIcon={
 						view === "questions" ? (
 							<IconSparkles size={18} className="app-accent" aria-hidden="true" />
 						) : view === "mood" ? (
 							<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
+						) : view === "wish" ? (
+							<IconStars size={18} className="text-yellow-400" aria-hidden="true" />
 						) : view === "flip" ? (
 							<IconCards size={18} className="text-violet-400" aria-hidden="true" />
 						) : undefined
@@ -403,6 +407,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						answered={isQuestionAnswered}
 						onSubmit={handlePageSubmit}
 					/>
+				) : view === "wish" ? (
+					<WishGamePage />
 				) : view === "flip" ? (
 					<FlipGamePage />
 				) : (
