@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { IconCoin, IconPlayerPlay, IconRefresh, IconSparkles, IconStar } from '@tabler/icons-react'
+import {
+	IconClock,
+	IconCloud,
+	IconCoin,
+	IconKeyboard,
+	IconPlayerPlay,
+	IconRefresh,
+	IconSparkles,
+	IconStar,
+} from "@tabler/icons-react";
 
 const CANVAS_W = 480
 const CANVAS_H = 560
@@ -16,6 +25,8 @@ type FallingObject = {
   h: number
   type: 'meteor' | 'obstacle'
   speed: number
+  acceleration: number
+  maxSpeed: number
   cloudRadius: number
   pauseSeconds: number
 }
@@ -198,6 +209,9 @@ export default function WishGamePage() {
         h: obstacle ? radius * 1.6 : 28,
         type: obstacle ? 'obstacle' : 'meteor',
         speed: obstacle ? 1.5 + (1 - radius / 45) + Math.random() * .3 : 2.5 + Math.random() * 1.5,
+        // 流星越落越快；烏雲維持固定速度，讓難度與凍結懲罰保持可預期。
+        acceleration: obstacle ? 0 : .025,
+        maxSpeed: obstacle ? Number.POSITIVE_INFINITY : 6.5,
         cloudRadius: radius,
         pauseSeconds: obstacle ? cloud.pauseSeconds : 0,
       })
@@ -226,7 +240,12 @@ export default function WishGamePage() {
       if (keysRef.current.has('arrowright') || keysRef.current.has('d')) petXRef.current += 7 * frameScale
       petXRef.current = Math.max(PET_W / 2, Math.min(CANVAS_W - PET_W / 2, petXRef.current))
 
-      for (const object of objectsRef.current) object.y += object.speed * frameScale
+      for (const object of objectsRef.current) {
+        if (object.type === 'meteor') {
+          object.speed = Math.min(object.maxSpeed, object.speed + object.acceleration * frameScale)
+        }
+        object.y += object.speed * frameScale
+      }
       const remainingObjects: FallingObject[] = []
       for (const object of objectsRef.current) {
         const hit = petXRef.current - PET_W / 2 < object.x + object.w / 2
@@ -313,82 +332,160 @@ export default function WishGamePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-xl space-y-5 px-4 py-6 animate-fade-in-up">
-      <section className="overflow-hidden rounded-2xl border border-violet-400/25 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 p-5 text-white shadow-xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-violet-200">
-              <IconSparkles size={14} />每日紓壓挑戰
-            </span>
-            <h2 className="mt-3 text-xl font-bold">流星許願樹</h2>
-            <p className="mt-1 text-sm text-violet-200">陪粉紅小兔接住幸運星，小心避開灰烏雲。</p>
-          </div>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-400/15 px-3 py-1.5 text-sm font-bold text-amber-300">
-            <IconCoin size={18} />{coins}
-          </span>
-        </div>
-      </section>
+		<main className="mx-auto w-full max-w-xl space-y-5 px-4 py-6 animate-fade-in-up">
+			<section className="overflow-hidden rounded-2xl border border-violet-400/25 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 p-5 text-white shadow-xl">
+				<div className="flex items-start justify-between gap-4">
+					<div>
+						<span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-violet-200">
+							<IconSparkles size={14} />
+							每日紓壓挑戰
+						</span>
+						<h2 className="mt-3 text-xl font-bold">流星許願樹</h2>
+						<p className="mt-1 text-sm text-violet-200">
+							陪粉紅小兔接住幸運星，小心避開灰烏雲。
+						</p>
+					</div>
+				</div>
+			</section>
 
-      {phase === 'intro' && (
-        <section className="app-surface rounded-2xl border p-5">
-          <div className="text-center text-5xl" aria-hidden="true">🌠</div>
-          <h3 className="app-text mt-3 text-center text-lg font-bold">接住今晚的幸運星</h3>
-          <ul className="app-surface-muted app-text-secondary mt-4 space-y-2 rounded-xl border border-[var(--app-border)] p-4 text-sm">
-            <li>⭐ 接住流星，每顆獲得 20 分</li>
-            <li>⌨️ 使用 ← →、A D，或滑鼠／手指移動小兔</li>
-            <li>☁️ 碰到烏雲會依大小凍結 1～3.5 秒</li>
-            <li>⏱️ 限時 45 秒，結算後獲得遊戲金幣</li>
-          </ul>
-          <button type="button" onClick={startGame} className="btn-grad mt-5 inline-flex items-center justify-center gap-2">
-            <IconPlayerPlay size={18} />開始遊戲
-          </button>
-        </section>
-      )}
+			{phase === "intro" && (
+				<section className="app-surface rounded-2xl border p-5">
+          <p className="app-text text-base font-semibold">遊戲規則</p>
+					<ul className="app-surface-muted app-text-secondary mt-4 space-y-2 rounded-xl border border-[var(--app-border)] p-4 text-sm">
+						<li className="flex items-start gap-2">
+							<IconStar
+								className="app-accent mt-0.5 shrink-0"
+								size={16}
+								aria-hidden="true"
+							/>
+							接住流星，每顆獲得 20 分
+						</li>
+						<li className="flex items-start gap-2">
+							<IconKeyboard
+								className="app-accent mt-0.5 shrink-0"
+								size={16}
+								aria-hidden="true"
+							/>
+							使用 ← →、A D，或滑鼠／手指移動小兔
+						</li>
+						<li className="flex items-start gap-2">
+							<IconCloud
+								className="app-accent mt-0.5 shrink-0"
+								size={16}
+								aria-hidden="true"
+							/>
+							碰到烏雲會依大小凍結 1～3.5 秒
+						</li>
+						<li className="flex items-start gap-2">
+							<IconClock
+								className="app-accent mt-0.5 shrink-0"
+								size={16}
+								aria-hidden="true"
+							/>
+							限時 45 秒，結算後獲得遊戲金幣
+						</li>
+					</ul>
+					<button
+						type="button"
+						onClick={startGame}
+						className="btn-grad mt-5 inline-flex items-center justify-center gap-2"
+					>
+						<IconPlayerPlay size={18} />
+						開始遊戲
+					</button>
+				</section>
+			)}
 
-      {phase === 'playing' && (
-        <section className="app-surface rounded-2xl border p-3 sm:p-5">
-          <div className="app-surface-muted mb-3 grid grid-cols-2 rounded-xl border border-[var(--app-border)] text-center">
-            <div className="border-r border-[var(--app-border)] py-2"><p className="app-text text-lg font-bold">{score}</p><p className="app-text-muted text-xs">得分</p></div>
-            <div className="py-2"><p className={`text-lg font-bold ${seconds <= 10 ? 'text-rose-500' : 'app-accent'}`}>{seconds}s</p><p className="app-text-muted text-xs">剩餘時間</p></div>
-          </div>
-          <div className="relative mx-auto max-w-[480px] overflow-hidden rounded-2xl shadow-xl">
-            <canvas
-              ref={canvasRef}
-              width={CANVAS_W}
-              height={CANVAS_H}
-              className="block h-auto w-full touch-none"
-              aria-label="流星許願樹遊戲區"
-              onPointerMove={event => movePet(event.clientX)}
-              onPointerDown={event => movePet(event.clientX)}
-            />
-            {pauseLabel && <div className="absolute inset-0 flex items-center justify-center bg-violet-200/35 text-xl font-extrabold text-white backdrop-blur-[1px]">{pauseLabel}</div>}
-            {floatTexts.map(item => (
-              <span key={item.id} className="pointer-events-none absolute font-extrabold text-amber-300 animate-fade-in-up" style={{ left: `${item.x / CANVAS_W * 100}%`, top: `${item.y / CANVAS_H * 100}%` }}>{item.text}</span>
-            ))}
-          </div>
-          <p className="app-text-muted mt-3 text-center text-xs">移動滑鼠、手指或使用方向鍵控制小兔</p>
-        </section>
-      )}
+			{phase === "playing" && (
+				<section className="app-surface rounded-2xl border p-3 sm:p-5">
+					<div className="app-surface-muted mb-3 grid grid-cols-2 rounded-xl border border-[var(--app-border)] text-center">
+						<div className="border-r border-[var(--app-border)] py-2">
+							<p className="app-text text-lg font-bold">{score}</p>
+							<p className="app-text-muted text-xs">得分</p>
+						</div>
+						<div className="py-2">
+							<p
+								className={`text-lg font-bold ${seconds <= 10 ? "text-rose-500" : "app-accent"}`}
+							>
+								{seconds}s
+							</p>
+							<p className="app-text-muted text-xs">剩餘時間</p>
+						</div>
+					</div>
+					<div className="relative mx-auto max-w-[480px] overflow-hidden rounded-2xl shadow-xl">
+						<canvas
+							ref={canvasRef}
+							width={CANVAS_W}
+							height={CANVAS_H}
+							className="block h-auto w-full touch-none"
+							aria-label="流星許願樹遊戲區"
+							onPointerMove={(event) => movePet(event.clientX)}
+							onPointerDown={(event) => movePet(event.clientX)}
+						/>
+						{pauseLabel && (
+							<div className="absolute inset-0 flex items-center justify-center bg-violet-200/35 text-xl font-extrabold text-white backdrop-blur-[1px]">
+								{pauseLabel}
+							</div>
+						)}
+						{floatTexts.map((item) => (
+							<span
+								key={item.id}
+								className="pointer-events-none absolute font-extrabold text-amber-300 animate-fade-in-up"
+								style={{
+									left: `${(item.x / CANVAS_W) * 100}%`,
+									top: `${(item.y / CANVAS_H) * 100}%`,
+								}}
+							>
+								{item.text}
+							</span>
+						))}
+					</div>
+					<p className="app-text-muted mt-3 text-center text-xs">
+						移動滑鼠、手指或使用方向鍵控制小兔
+					</p>
+				</section>
+			)}
 
-      {phase === 'result' && (
-        <section className="app-surface rounded-2xl border p-6 text-center animate-fade-in-up">
-          <IconStar size={46} className="mx-auto text-amber-400" fill="currentColor" />
-          <h3 className="app-text mt-3 text-xl font-bold">今晚的流星收集完成！</h3>
-          <p className="app-text-muted mt-2 text-sm">{resultMessage(score)}</p>
-          <div className="app-surface-muted mt-5 rounded-xl border border-[var(--app-border)] py-4">
-            <p className="app-text text-3xl font-extrabold">{score} 分</p>
-            <p className="app-warning mt-1 inline-flex items-center gap-1 text-sm font-semibold"><IconCoin size={17} />獲得 {reward} 金幣</p>
-          </div>
-          <label className="app-text-secondary mt-4 inline-flex cursor-pointer items-center gap-2 text-sm">
-            <input type="checkbox" checked={checkedIn} onChange={event => toggleCheckIn(event.target.checked)} className="h-4 w-4 accent-violet-600" />
-            今日已完成情緒打卡（1.2× 金幣加成）
-          </label>
-          <div className="mt-5 flex gap-3">
-            <button type="button" onClick={startGame} className="btn-grad inline-flex flex-1 items-center justify-center gap-2"><IconRefresh size={17} />再玩一次</button>
-            <button type="button" onClick={() => setPhase('intro')} className="app-surface-muted app-text-secondary flex-1 rounded-xl border border-[var(--app-border)] py-2.5 text-sm font-semibold app-hover">遊戲說明</button>
-          </div>
-        </section>
-      )}
-    </main>
-  )
+			{phase === "result" && (
+				<section className="app-surface rounded-2xl border p-6 text-center animate-fade-in-up">
+					<IconStar size={46} className="mx-auto text-amber-400" fill="currentColor" />
+					<h3 className="app-text mt-3 text-xl font-bold">今晚的流星收集完成！</h3>
+					<p className="app-text-muted mt-2 text-sm">{resultMessage(score)}</p>
+					<div className="app-surface-muted mt-5 rounded-xl border border-[var(--app-border)] py-4">
+						<p className="app-text text-3xl font-extrabold">{score} 分</p>
+						<p className="app-warning mt-1 inline-flex items-center gap-1 text-sm font-semibold">
+							<IconCoin size={17} />
+							獲得 {reward} 金幣
+						</p>
+					</div>
+					<label className="app-text-secondary mt-4 inline-flex cursor-pointer items-center gap-2 text-sm">
+						<input
+							type="checkbox"
+							checked={checkedIn}
+							onChange={(event) => toggleCheckIn(event.target.checked)}
+							className="h-4 w-4 accent-violet-600"
+						/>
+						今日已完成情緒打卡（1.2× 金幣加成）
+					</label>
+					<div className="mt-5 flex gap-3">
+						<button
+							type="button"
+							onClick={startGame}
+							className="btn-grad inline-flex flex-1 items-center justify-center gap-2"
+						>
+							<IconRefresh size={17} />
+							再玩一次
+						</button>
+						<button
+							type="button"
+							onClick={() => setPhase("intro")}
+							className="app-surface-muted app-text-secondary flex-1 rounded-xl border border-[var(--app-border)] py-2.5 text-sm font-semibold app-hover"
+						>
+							遊戲說明
+						</button>
+					</div>
+				</section>
+			)}
+		</main>
+  );
 }

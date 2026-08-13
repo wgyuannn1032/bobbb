@@ -253,59 +253,68 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 				</div>
 
 				{/* Games & Tools section */}
-				<nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+				<nav className="flex-1 px-3 py-4 overflow-y-auto">
 					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 tracking-wider flex items-center gap-1.5">
 						<IconHeart size={14} aria-hidden="true" />
 						心情工具
 					</p>
-					{TOOLS.map((t) => (
-						<button
-							key={t.view}
-							type="button"
-							aria-current={view === t.view ? "page" : undefined}
-							className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${
-								view === t.view
-									? "bg-rose-500/15 border border-rose-500/30 text-rose-400 shadow-sm"
-									: "app-hover app-text-secondary"
-							}`}
-							onClick={() => {
-								if (t.view === "questions") setQuestionTab("checkin");
-								setView(t.view);
-								setSidebarOpen(false);
-							}}
-						>
-							<span className={`${t.color} transition`}>{t.icon}</span>
-							<span>{t.label}</span>
-						</button>
-					))}
+					<div className="space-y-1">
+						{TOOLS.map((t) => (
+							<button
+								key={t.view}
+								type="button"
+								aria-current={view === t.view ? "page" : undefined}
+								className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${
+									view === t.view
+										? "bg-rose-500/15 border border-rose-500/30 text-rose-400 shadow-sm"
+										: "app-hover app-text-secondary"
+								}`}
+								onClick={() => {
+									if (t.view === "questions") setQuestionTab("checkin");
+									setView(t.view);
+									setSidebarOpen(false);
+								}}
+							>
+								<span className={`${t.color} transition`}>{t.icon}</span>
+								<span>{t.label}</span>
+							</button>
+						))}
+					</div>
 					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 mt-3 tracking-wider flex items-center gap-1.5">
 						<IconDeviceGamepad2 size={14} aria-hidden="true" />
 						紓壓小遊戲
 					</p>
-					{GAMES.map((g) => g.view ? (
-						<button
-							key={g.view}
-							type="button"
-							aria-current={view === g.view ? "page" : undefined}
-							className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${view === g.view ? "bg-violet-500/15 border border-violet-500/30 app-accent shadow-sm" : "app-hover app-text-secondary"}`}
-							onClick={() => { setView(g.view); setSidebarOpen(false) }}
-						>
-							<span className={`${g.color} transition`}>{g.icon}</span>
-							<span>{g.label}</span>
-						</button>
-					) : (
-						<a
-							key={g.href}
-							href={g.href}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="flex items-center gap-3 px-3 py-2.5 rounded-xl app-hover app-text-secondary text-sm font-medium transition group"
-							onClick={() => setSidebarOpen(false)}
-						>
-							<span className={`${g.color} transition`}>{g.icon}</span>
-							<span>{g.label}</span>
-						</a>
-					))}
+					<div className="space-y-1">
+						{GAMES.map((g) =>
+							g.view ? (
+								<button
+									key={g.view}
+									type="button"
+									aria-current={view === g.view ? "page" : undefined}
+									className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${view === g.view ? "bg-violet-500/15 border border-violet-500/30 app-accent shadow-sm" : "app-hover app-text-secondary"}`}
+									onClick={() => {
+										setView(g.view);
+										setSidebarOpen(false);
+									}}
+								>
+									<span className={`${g.color} transition`}>{g.icon}</span>
+									<span>{g.label}</span>
+								</button>
+							) : (
+								<a
+									key={g.href}
+									href={g.href}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="flex items-center gap-3 px-3 py-2.5 rounded-xl app-hover app-text-secondary text-sm font-medium transition group"
+									onClick={() => setSidebarOpen(false)}
+								>
+									<span className={`${g.color} transition`}>{g.icon}</span>
+									<span>{g.label}</span>
+								</a>
+							),
+						)}
+					</div>
 				</nav>
 
 				{/* Sidebar footer */}
