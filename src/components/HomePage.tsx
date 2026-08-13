@@ -18,6 +18,7 @@ import {
   IconUserEdit,
   IconX,
   IconMoodSmile,
+  IconPaw,
 } from '@tabler/icons-react'
 import {
   getUserData,
@@ -36,6 +37,7 @@ import WishGamePage from './WishGamePage'
 import AppNav from './AppNav'
 import MoodPage from './MoodPage'
 import ProfileModal from './ProfileModal'
+import CharacterColorPage from './CharacterColorPage'
 
 interface Props {
   user:   User
@@ -45,7 +47,7 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'mood' | 'questions' | 'wish' | 'flip'
+type View = 'home' | 'mood' | 'questions' | 'pet' | 'wish' | 'flip'
 type QuestionTab = 'checkin' | 'history' | 'community'
 
 const GAMES = [
@@ -82,6 +84,12 @@ const TOOLS = [
     label: '情緒打卡',
     color: 'text-rose-400',
   },
+  {
+    view: 'pet' as View,
+    icon: <IconPaw size={20} aria-hidden="true" />,
+    label: '我的小寵物',
+    color: 'text-amber-400',
+  },
 ]
 
 export default function HomePage({ user, db, config, onSaveProfile, onLogout }: Props) {
@@ -104,6 +112,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
       home: 'DailyGem',
       questions: '每日問答｜DailyGem',
       mood: '情緒打卡｜DailyGem',
+      pet: '我的小寵物｜DailyGem',
       wish: '流星許願樹｜DailyGem',
       flip: '星際花園翻翻看｜DailyGem',
     }
@@ -319,6 +328,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							? "每日問答"
 							: view === "mood"
 								? "情緒打卡"
+								: view === "pet"
+									? "我的小寵物"
 								: view === "wish"
 									? "流星許願樹"
 									: view === "flip"
@@ -330,6 +341,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							<IconSparkles size={18} className="app-accent" aria-hidden="true" />
 						) : view === "mood" ? (
 							<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
+						) : view === "pet" ? (
+							<IconPaw size={18} className="text-amber-400" aria-hidden="true" />
 						) : view === "wish" ? (
 							<IconStars size={18} className="text-yellow-400" aria-hidden="true" />
 						) : view === "flip" ? (
@@ -424,6 +437,10 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						answered={isQuestionAnswered}
 						onSubmit={handlePageSubmit}
 					/>
+				) : view === "pet" ? (
+					<main className="mx-auto w-full max-w-xl px-4 py-6">
+						<CharacterColorPage embedded />
+					</main>
 				) : view === "wish" ? (
 					<WishGamePage />
 				) : view === "flip" ? (

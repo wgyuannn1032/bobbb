@@ -72,19 +72,11 @@ export default function CharacterColorPage({ embedded = false }: Props) {
       </div>
 
       {/* 角色容器 */}
-      <div className="relative h-64 w-64 sm:h-72 sm:w-72" aria-label={`${selected}預覽`}>
-        {/* 底層：灰階底圖 */}
-        <img
-          src={base}
-          alt={`${selected}底圖`}
-          className="absolute inset-0 h-full w-full object-contain"
-        />
-
-        {/* 中層：染色層 */}
+      <div className="relative isolate h-64 w-64 sm:h-72 sm:w-72" aria-label={`${selected}預覽`}>
+        {/* 底層：先鋪上實色，避免半透明陰影與深色頁面背景混合。 */}
         <div
           style={{
             backgroundColor: color,
-            mixBlendMode: 'multiply',
             WebkitMaskImage: `url('${mask}')`,
             maskImage: `url('${mask}')`,
             WebkitMaskSize: 'contain',
@@ -95,6 +87,15 @@ export default function CharacterColorPage({ embedded = false }: Props) {
             maskPosition: 'center',
           } as React.CSSProperties}
           className="absolute inset-0 h-full w-full"
+        />
+
+        {/* 中層：灰階陰影只與染色區混合，不受頁面明暗主題影響。 */}
+        <img
+          src={base}
+          alt=""
+          aria-hidden="true"
+          style={{ mixBlendMode: 'multiply' }}
+          className="absolute inset-0 h-full w-full object-contain"
         />
 
         {/* 頂層：不被染色的部分 */}
