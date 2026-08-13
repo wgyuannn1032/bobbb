@@ -2,7 +2,7 @@
 
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, runTransaction,
-  collection, query, where,
+  collection, addDoc, query, where, increment,
   getDocs, serverTimestamp, writeBatch, Firestore,
 } from 'firebase/firestore'
 import { User } from 'firebase/auth'
@@ -187,7 +187,7 @@ export async function deleteAnswer(
 
 // ── Mood Check-in ──────────────────────────────────────────
 
-export type MoodLevel = 1 | 2 | 3 | 4 | 5
+export type MoodLevel = 'thunder' | 'rain' | 'volcano' | 'sunny' | 'cloudy' | 'rainbow'
 
 export interface MoodRecord {
   id?:       string
@@ -202,22 +202,9 @@ export async function saveMoodCheckIn(
   db:     Firestore,
   record: Omit<MoodRecord, 'id' | 'createdAt'>
 ): Promise<void> {
-  await setDoc(doc(db, 'moods', moodDocumentId(record.uid, record.date)), {
+  await addDoc(collection(db, 'moods'), {
     ...record,
     createdAt: serverTimestamp(),
-  })
-}
-
-export async function updateMoodCheckIn(
-  db: Firestore,
-  recordId: string,
-  mood: MoodLevel,
-  note: string
-): Promise<void> {
-  await updateDoc(doc(db, 'moods', recordId), {
-    mood,
-    note: note.trim(),
-    updatedAt: serverTimestamp(),
   })
 }
 
@@ -251,10 +238,6 @@ export async function getTodayMood(
   return { id: d.id, ...d.data() } as MoodRecord
 }
 
-function moodDocumentId(uid: string, date: string): string {
-  return `${uid}_${date}`
-}
-
 function timestampMillis(value: unknown): number {
   if (value && typeof value === 'object' && 'toMillis' in value) {
     const toMillis = (value as { toMillis?: unknown }).toMillis
@@ -263,4 +246,42 @@ function timestampMillis(value: unknown): number {
     }
   }
   return 0
+}
+
+// ── Anonymous treehole ──────────────────────────────────────
+
+export interface TreeholePost {
+  id?: string
+  text: string
+  moodKey: MoodLevel | null
+  anonName: string
+  anonEmoji: string
+  likes: number
+  resonates: number
+  createdAt?: unknown
+}
+
+export async function saveTreeholePost(
+  db: Firestore,
+  post: Omit<TreeholePost, 'id' | 'createdAt'>
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'treehole'), { ...post, createdAt: serverTimestamp() })
+  return ref.id
+}
+
+export async function fetchTreeholePosts(db: Firestore, max: number = 100): Promise<TreeholePost[]> {
+  const snap = await getDocs(query(collection(db, 'treehole')))
+  return snap.docs
+    .map(item => ({ id: item.id, ...item.data() } as TreeholePost))
+    .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
+    .slice(0, max)
+}
+
+export async function toggleTreeholeReaction(
+  db: Firestore,
+  postId: string,
+  field: 'likes' | 'resonates',
+  delta: 1 | -1
+): Promise<void> {
+  await updateDoc(doc(db, 'treehole', postId), { [field]: increment(delta) })
 }

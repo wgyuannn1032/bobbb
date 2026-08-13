@@ -1,90 +1,157 @@
 // src/components/MoodPage.tsx
-// 情緒打卡頁面：選擇今日情緒 → 可選寫日記 → 存到 Firestore → 查看歷史趨勢
-import { useState, useEffect, useCallback } from 'react'
+// 情緒打卡 + 匿名樹洞
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Firestore } from 'firebase/firestore'
 import {
-  IconMoodCry, IconMoodSad, IconMoodNeutral,
-  IconMoodSmile, IconMoodHappy, IconPencil, IconCheck,
-  IconCalendar, IconTrendingUp, IconNotes,
+  IconPencil, IconCheck, IconCalendar, IconTrendingUp,
+  IconNotes, IconMoodSmile, IconSend, IconHeart,
+  IconHeartFilled, IconFeather,
 } from '@tabler/icons-react'
 import {
-  saveMoodCheckIn, updateMoodCheckIn, fetchMoods, getTodayMood,
-  MoodLevel, MoodRecord,
+  saveMoodCheckIn, fetchMoods, getTodayMood,
+  saveTreeholePost, fetchTreeholePosts, toggleTreeholeReaction,
+  MoodLevel, MoodRecord, TreeholePost,
 } from '../lib/firestore'
 import { todayKey } from '../lib/gemini'
 import AppNav from './AppNav'
 
 interface Props {
-  uid:    string
-  db:     Firestore
-  onBack: () => void
+  uid:      string
+  db:       Firestore
+  onBack:   () => void
   embedded?: boolean
 }
 
 // ── Mood config ──────────────────────────────────────────────
 const MOODS: {
-  level:     MoodLevel
-  label:     string
-  emoji:     string
-  icon:      React.ReactNode
-  color:     string
-  bg:        string
-  border:    string
+  key:    MoodLevel
+  label:  string
+  sub:    string
+  color:  string
+  border: string
+  bg:     string
+  icon:   () => JSX.Element
 }[] = [
   {
-    level:  1,
-    label:  '很糟',
-    emoji:  '😢',
-    icon:   <IconMoodCry   size={28} />,
-    color:  'text-blue-500',
-    bg:     'bg-blue-500/10',
-    border: 'border-blue-500/40',
+    key: 'thunder', label: '焦慮', sub: '雷雨',
+    color: 'text-[#8b7fc7]', border: 'border-[#b0a4d8]', bg: 'bg-[rgba(176,164,216,.18)]',
+    icon: () => (
+      <svg width="40" height="40" viewBox="0 0 38 38" fill="none">
+        <path d="M10 22a7 7 0 01.7-14 7.5 7.5 0 0114.6 2A5.5 5.5 0 1128 22H10z" fill="#b0a4d8" opacity=".85"/>
+        <line x1="13" y1="26" x2="11" y2="31" stroke="#8b7fc7" strokeWidth="1.6" strokeLinecap="round"/>
+        <line x1="19" y1="26" x2="17" y2="31" stroke="#8b7fc7" strokeWidth="1.6" strokeLinecap="round"/>
+        <line x1="25" y1="26" x2="23" y2="31" stroke="#8b7fc7" strokeWidth="1.6" strokeLinecap="round"/>
+        <path d="M20 15l-4 7h4l-3 6" stroke="#f9e080" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
   },
   {
-    level:  2,
-    label:  '不好',
-    emoji:  '😔',
-    icon:   <IconMoodSad   size={28} />,
-    color:  'text-indigo-400',
-    bg:     'bg-indigo-500/10',
-    border: 'border-indigo-500/40',
+    key: 'rain', label: '難過', sub: '下雨',
+    color: 'text-[#6aaad4]', border: 'border-[#a8c8e8]', bg: 'bg-[rgba(168,200,232,.18)]',
+    icon: () => (
+      <svg width="40" height="40" viewBox="0 0 38 38" fill="none">
+        <path d="M10 20a7 7 0 01.7-14 7.5 7.5 0 0114.6 2A5.5 5.5 0 1128 20H10z" fill="#a8c8e8" opacity=".9"/>
+        <line x1="13" y1="24" x2="12" y2="29" stroke="#6aaad4" strokeWidth="1.6" strokeLinecap="round"/>
+        <line x1="18" y1="24" x2="17" y2="29" stroke="#6aaad4" strokeWidth="1.6" strokeLinecap="round"/>
+        <line x1="23" y1="24" x2="22" y2="29" stroke="#6aaad4" strokeWidth="1.6" strokeLinecap="round"/>
+        <line x1="10" y1="27" x2="9"  y2="32" stroke="#6aaad4" strokeWidth="1.6" strokeLinecap="round"/>
+        <line x1="27" y1="27" x2="26" y2="32" stroke="#6aaad4" strokeWidth="1.6" strokeLinecap="round"/>
+      </svg>
+    ),
   },
   {
-    level:  3,
-    label:  '普通',
-    emoji:  '😐',
-    icon:   <IconMoodNeutral size={28} />,
-    color:  'text-slate-400',
-    bg:     'bg-slate-500/10',
-    border: 'border-slate-500/30',
+    key: 'volcano', label: '生氣', sub: '火山',
+    color: 'text-[#e05a4a]', border: 'border-[#f4a6a0]', bg: 'bg-[rgba(244,166,160,.18)]',
+    icon: () => (
+      <svg width="40" height="40" viewBox="0 0 38 38" fill="none">
+        <path d="M6 32l13-22 13 22z" fill="#f4a6a0" opacity=".85"/>
+        <path d="M16 17l-2 6h2l-1.5 4" stroke="#e05a4a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="20" cy="9" r="1.2" fill="#f9c4a0"/>
+        <circle cx="23" cy="12" r=".9" fill="#f9c4a0"/>
+        <circle cx="17" cy="11" r=".9" fill="#f9c4a0"/>
+        <path d="M19 8c0-2 3-3 3-1M17 8c0-2-3-2.5-2-.5" stroke="#e8c8c0" strokeWidth="1.2" strokeLinecap="round"/>
+      </svg>
+    ),
   },
   {
-    level:  4,
-    label:  '不錯',
-    emoji:  '😊',
-    icon:   <IconMoodSmile size={28} />,
-    color:  'text-emerald-400',
-    bg:     'bg-emerald-500/10',
-    border: 'border-emerald-500/40',
+    key: 'sunny', label: '平靜', sub: '晴天',
+    color: 'text-[#d4a000]', border: 'border-[#fde9a2]', bg: 'bg-[rgba(253,233,162,.28)]',
+    icon: () => (
+      <svg width="40" height="40" viewBox="0 0 38 38" fill="none">
+        <circle cx="19" cy="19" r="8" fill="#fde047" opacity=".9"/>
+        <line x1="19" y1="5"  x2="19" y2="9"  stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="19" y1="29" x2="19" y2="33" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="5"  y1="19" x2="9"  y2="19" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="29" y1="19" x2="33" y2="19" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="9.1"  y1="9.1"  x2="11.9" y2="11.9" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="26.1" y1="26.1" x2="28.9" y2="28.9" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="28.9" y1="9.1"  x2="26.1" y2="11.9" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round"/>
+        <line x1="11.9" y1="26.1" x2="9.1"  y2="28.9" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+    ),
   },
   {
-    level:  5,
-    label:  '很棒',
-    emoji:  '😄',
-    icon:   <IconMoodHappy size={28} />,
-    color:  'text-yellow-400',
-    bg:     'bg-yellow-500/10',
-    border: 'border-yellow-500/40',
+    key: 'cloudy', label: '疲憊', sub: '陰天',
+    color: 'text-[#6a9a6a]', border: 'border-[#c8d8c8]', bg: 'bg-[rgba(200,216,200,.28)]',
+    icon: () => (
+      <svg width="40" height="40" viewBox="0 0 38 38" fill="none">
+        <path d="M8 24a6 6 0 01.6-12 6.5 6.5 0 0112.6 1.7A4.8 4.8 0 1124 24H8z" fill="#c8d8c8" opacity=".7"/>
+        <path d="M14 28a5 5 0 01.5-10 5.4 5.4 0 0110.5 1.5A4 4 0 1128 28H14z" fill="#b0c8b0" opacity=".9"/>
+      </svg>
+    ),
+  },
+  {
+    key: 'rainbow', label: '開心', sub: '彩虹',
+    color: 'text-[#e8607a]', border: 'border-[#f9c4d0]', bg: 'bg-[rgba(249,196,208,.22)]',
+    icon: () => (
+      <svg width="40" height="40" viewBox="0 0 38 38" fill="none">
+        <path d="M5 26a14 14 0 0128 0" stroke="#f4a6a0" strokeWidth="3" strokeLinecap="round" fill="none"/>
+        <path d="M8 26a11 11 0 0122 0" stroke="#fde9a2" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+        <path d="M11 26a8 8 0 0116 0" stroke="#a8d8c8" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+        <path d="M14 26a5 5 0 0110 0" stroke="#a8c8e8" strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <ellipse cx="5.5"  cy="25.5" rx="3" ry="2" fill="#f9c4d0" opacity=".8"/>
+        <ellipse cx="32.5" cy="25.5" rx="3" ry="2" fill="#f9c4d0" opacity=".8"/>
+      </svg>
+    ),
   },
 ]
 
-function getMoodConfig(level: MoodLevel) {
-  return MOODS.find(m => m.level === level) ?? MOODS[2]
+function getMoodConfig(key: MoodLevel) {
+  return MOODS.find(m => m.key === key) ?? MOODS[3]
+}
+
+// ── Anon name pool ────────────────────────────────────────────
+const ANON_NAMES = [
+  '迷路的雲朵','某個路人','不知名的星星','喜歡下雨的人',
+  '散步中的貓咪','安靜的樹','偶爾的風','記不住名字的花',
+  '某個夜晚','喝茶的小熊','窗邊的人','想睡覺的月亮',
+]
+const ANON_EMOJIS = ['🌿','🍃','🌾','🍂','🌸','🌻','🌼','🍀','🌱']
+
+function randomAnonIdentity() {
+  const name  = ANON_NAMES[Math.floor(Math.random() * ANON_NAMES.length)]
+  const emoji = ANON_EMOJIS[Math.floor(Math.random() * ANON_EMOJIS.length)]
+  return { name, emoji }
+}
+
+function timeAgo(value: unknown): string {
+  let ms = 0
+  if (value && typeof value === 'object' && 'toMillis' in value) {
+    const fn = (value as { toMillis?: unknown }).toMillis
+    if (typeof fn === 'function') ms = fn.call(value) as number
+  }
+  if (!ms) return '剛剛'
+  const diff = Date.now() - ms
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return '剛剛'
+  if (m < 60) return `${m} 分鐘前`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h} 小時前`
+  return `${Math.floor(h / 24)} 天前`
 }
 
 // ── Bar chart: last 14 days ──────────────────────────────────
 function MoodBarChart({ records }: { records: MoodRecord[] }) {
-  // Build last-14-day date keys
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (13 - i))
@@ -92,9 +159,10 @@ function MoodBarChart({ records }: { records: MoodRecord[] }) {
     const dd = String(d.getDate()).padStart(2, '0')
     return `${d.getFullYear()}-${mm}-${dd}`
   })
-
+  const MOOD_SCORE: Record<MoodLevel, number> = {
+    thunder: 1, rain: 2, volcano: 2, cloudy: 3, sunny: 4, rainbow: 5,
+  }
   const byDate = new Map(records.map(r => [r.date, r.mood]))
-
   return (
     <div className="app-surface border rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-4">
@@ -103,36 +171,28 @@ function MoodBarChart({ records }: { records: MoodRecord[] }) {
       </div>
       <div className="flex items-end gap-1.5 h-16">
         {days.map(date => {
-          const mood = byDate.get(date)
-          const cfg  = mood ? getMoodConfig(mood) : null
-          const barH = mood ? `${(mood / 5) * 100}%` : '8px'
-          const shortDate = date.slice(5) // MM-DD
+          const moodKey = byDate.get(date)
+          const cfg     = moodKey ? getMoodConfig(moodKey) : null
+          const score   = moodKey ? MOOD_SCORE[moodKey] : 0
+          const barH    = score ? `${(score / 5) * 100}%` : '8px'
           return (
             <div key={date} className="flex-1 flex flex-col items-center gap-1">
               <div
-                className="w-full rounded-t-md transition-all duration-300"
+                className={`w-full rounded-t-md transition-all duration-300 ${cfg ? cfg.bg : ''}`}
                 style={{
-                  height:     barH,
-                  minHeight:  '8px',
-                  background: mood ? undefined : 'var(--app-border)',
-                  opacity:    mood ? 1 : 0.4,
+                  height: barH, minHeight: '8px',
+                  background: cfg ? undefined : 'var(--app-border)',
+                  opacity:    score ? 1 : 0.4,
                 }}
-              >
-                {mood && (
-                  <div
-                    className={`w-full h-full rounded-t-md ${cfg!.bg}`}
-                    title={`${shortDate}: ${cfg!.label}`}
-                  />
-                )}
-              </div>
-              {mood && (
-                <span className="text-[9px] app-text-muted leading-none">{cfg!.emoji}</span>
+                title={cfg ? `${date.slice(5)}: ${cfg.label}` : date.slice(5)}
+              />
+              {moodKey && cfg && (
+                <span className="text-[9px] app-text-muted leading-none">{cfg.sub[0]}</span>
               )}
             </div>
           )
         })}
       </div>
-      {/* X axis labels: show only first/mid/last */}
       <div className="flex justify-between mt-1">
         <span className="text-[10px] app-text-muted">{days[0].slice(5)}</span>
         <span className="text-[10px] app-text-muted">{days[6].slice(5)}</span>
@@ -142,96 +202,187 @@ function MoodBarChart({ records }: { records: MoodRecord[] }) {
   )
 }
 
-// ── Mood stats: avg + streak ──────────────────────────────────
+// ── Mood stats ────────────────────────────────────────────────
 function MoodStats({ records }: { records: MoodRecord[] }) {
   if (records.length === 0) return null
-
-  const avg    = records.reduce((s, r) => s + r.mood, 0) / records.length
-  const avgCfg = getMoodConfig(Math.round(avg) as MoodLevel)
-
-  // Current consecutive streak
+  const MOOD_SCORE: Record<MoodLevel, number> = {
+    thunder: 1, rain: 2, volcano: 2, cloudy: 3, sunny: 4, rainbow: 5,
+  }
+  const avg = records.reduce((s, r) => s + MOOD_SCORE[r.mood], 0) / records.length
+  const avgKey = (['thunder','rain','cloudy','sunny','rainbow'] as MoodLevel[])
+    .reduce((best, k) => Math.abs(MOOD_SCORE[k] - avg) < Math.abs(MOOD_SCORE[best] - avg) ? k : best)
+  const avgCfg = getMoodConfig(avgKey)
   let streak = 0
-  const today = todayKey()
   const d = new Date()
   while (streak < records.length) {
-    const key = (() => {
-      const mm = String(d.getMonth() + 1).padStart(2, '0')
-      const dd = String(d.getDate()).padStart(2, '0')
-      return `${d.getFullYear()}-${mm}-${dd}`
-    })()
-    if (records.some(r => r.date === key)) {
-      streak++
-      d.setDate(d.getDate() - 1)
-    } else break
+    const mm  = String(d.getMonth() + 1).padStart(2, '0')
+    const dd  = String(d.getDate()).padStart(2, '0')
+    const key = `${d.getFullYear()}-${mm}-${dd}`
+    if (records.some(r => r.date === key)) { streak++; d.setDate(d.getDate() - 1) } else break
   }
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <div className="app-surface border rounded-xl p-3 text-center">
+        <div className={`text-xl font-extrabold ${avgCfg.color}`}>{avgCfg.label}</div>
+        <div className="app-text-muted text-xs mt-0.5">平均情緒</div>
+      </div>
+      <div className="app-surface border rounded-xl p-3 text-center">
+        <div className="app-warning text-2xl font-extrabold">{streak}</div>
+        <div className="app-text-muted text-xs mt-0.5">連續天數 🔥</div>
+      </div>
+      <div className="app-surface border rounded-xl p-3 text-center">
+        <div className="app-accent text-2xl font-extrabold">{records.length}</div>
+        <div className="app-text-muted text-xs mt-0.5">打卡次數</div>
+      </div>
+    </div>
+  )
+}
+
+// ── Treehole post card ────────────────────────────────────────
+function PostCard({
+  post, liked, resonated, onLike, onResonate,
+}: {
+  post: TreeholePost
+  liked: boolean
+  resonated: boolean
+  onLike: () => void
+  onResonate: () => void
+}) {
+  const moodCfg = post.moodKey ? getMoodConfig(post.moodKey) : null
+  const bgPalette = [
+    'rgba(176,164,216,.14)', 'rgba(168,200,232,.14)', 'rgba(244,166,160,.14)',
+    'rgba(253,233,162,.20)', 'rgba(200,216,200,.20)', 'rgba(249,196,208,.16)',
+  ]
+  const avatarBg = bgPalette[post.anonName.length % bgPalette.length]
 
   return (
-		<div className="grid grid-cols-3 gap-3">
-			<div className="app-surface border rounded-xl p-3 text-center">
-				<div className={`text-2xl font-extrabold ${avgCfg.color}`}>{avg.toFixed(1)}</div>
-				<div className="app-text-muted text-xs mt-0.5">平均情緒</div>
-			</div>
-			<div className="app-surface border rounded-xl p-3 text-center">
-				<div className="app-warning text-2xl font-extrabold">{streak}</div>
-				<div className="app-text-muted text-xs mt-0.5">連續天數</div>
-			</div>
-			<div className="app-surface border rounded-xl p-3 text-center">
-				<div className="app-accent text-2xl font-extrabold">{records.length}</div>
-				<div className="app-text-muted text-xs mt-0.5">打卡次數</div>
-			</div>
-		</div>
-  );
+    <div className="app-surface border rounded-2xl p-4 space-y-3">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center text-xl flex-shrink-0"
+          style={{ background: avatarBg }}
+        >
+          {post.anonEmoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="app-text text-sm font-semibold truncate">{post.anonName}</p>
+          <p className="app-text-muted text-xs flex items-center gap-1.5">
+            {timeAgo(post.createdAt)}
+            <span className="inline-block w-0.5 h-0.5 rounded-full bg-current opacity-40" />
+            <span className="text-[#9080b8] font-medium">匿名</span>
+          </p>
+        </div>
+        {moodCfg && (
+          <span
+            className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${moodCfg.color} ${moodCfg.border}`}
+            style={{ background: moodCfg.bg.replace('bg-[', '').replace(']', '') }}
+          >
+            {moodCfg.label}
+          </span>
+        )}
+      </div>
+
+      {/* Body */}
+      <p className="app-text-secondary text-sm leading-relaxed whitespace-pre-wrap">{post.text}</p>
+
+      {/* Footer */}
+      <div className="flex items-center gap-4 pt-1">
+        <button
+          onClick={onLike}
+          className={`flex items-center gap-1.5 text-xs font-medium transition
+            ${liked ? 'text-rose-500' : 'app-text-muted hover:text-rose-400'}`}
+        >
+          {liked
+            ? <IconHeartFilled size={15} />
+            : <IconHeart size={15} />}
+          <span>{post.likes}</span>
+        </button>
+        <button
+          onClick={onResonate}
+          className={`flex items-center gap-1.5 text-xs font-medium transition
+            ${resonated ? 'text-violet-500' : 'app-text-muted hover:text-violet-400'}`}
+        >
+          <IconFeather size={15} />
+          <span>{post.resonates}</span>
+          <span>我也是</span>
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ── Main component ────────────────────────────────────────────
 export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
   const today = todayKey()
 
-  const [records,     setRecords]     = useState<MoodRecord[]>([])
-  const [todayMood,   setTodayMood]   = useState<MoodRecord | null>(null)
-  const [selected,    setSelected]    = useState<MoodLevel | null>(null)
-  const [note,        setNote]        = useState('')
-  const [saving,      setSaving]      = useState(false)
-  const [loading,     setLoading]     = useState(true)
-  const [showNote,    setShowNote]    = useState(false)
-  const [toast,       setToast]       = useState<string | null>(null)
-  const [tab,         setTab]         = useState<'checkin' | 'history'>('checkin')
+  // check-in state
+  const [records,   setRecords]   = useState<MoodRecord[]>([])
+  const [todayMood, setTodayMood] = useState<MoodRecord | null>(null)
+  const [selected,  setSelected]  = useState<MoodLevel | null>(null)
+  const [note,      setNote]      = useState('')
+  const [saving,    setSaving]    = useState(false)
+  const [loading,   setLoading]   = useState(true)
+  const [showNote,  setShowNote]  = useState(false)
 
-  const loadData = useCallback(async () => {
-    const [all, td] = await Promise.all([
-      fetchMoods(db, uid, 60),
-      getTodayMood(db, uid, today),
-    ])
-    setRecords(all)
-    setTodayMood(td)
-    if (td) {
-      setSelected(td.mood)
-      setNote(td.note)
-      setShowNote(td.note.length > 0)
-    }
-  }, [db, uid, today])
+  // treehole state
+  const [posts,         setPosts]         = useState<TreeholePost[]>([])
+  const [postsLoading,  setPostsLoading]  = useState(true)
+  const [postText,      setPostText]      = useState('')
+  const [postMoodKey,   setPostMoodKey]   = useState<MoodLevel | null>(null)
+  const [posting,       setPosting]       = useState(false)
+  const [activeFilter,  setActiveFilter]  = useState<MoodLevel | 'all'>('all')
+  // track liked/resonated per session (postId sets)
+  const likedSet     = useRef(new Set<string>())
+  const resonatedSet = useRef(new Set<string>())
 
-  useEffect(() => {
-    setLoading(true)
-    loadData().finally(() => setLoading(false))
-  }, [loadData])
+  // shared
+  const [tab,   setTab]   = useState<'checkin' | 'history' | 'treehole'>('checkin')
+  const [toast, setToast] = useState<string | null>(null)
 
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 2500)
   }
 
+  // ── Load check-in data ───────────────────────────────────────
+  const loadCheckIn = useCallback(async () => {
+    const [all, td] = await Promise.all([
+      fetchMoods(db, uid, 60),
+      getTodayMood(db, uid, today),
+    ])
+    setRecords(all)
+    setTodayMood(td)
+    if (td) setSelected(td.mood)
+  }, [db, uid, today])
+
+  useEffect(() => {
+    setLoading(true)
+    loadCheckIn().finally(() => setLoading(false))
+  }, [loadCheckIn])
+
+  // ── Load treehole ────────────────────────────────────────────
+  const loadPosts = useCallback(async () => {
+    setPostsLoading(true)
+    const data = await fetchTreeholePosts(db, 100)
+    setPosts(data)
+    setPostsLoading(false)
+  }, [db])
+
+  useEffect(() => {
+    if (tab === 'treehole') loadPosts()
+  }, [tab, loadPosts])
+
+  // ── Check-in submit ──────────────────────────────────────────
   const handleSave = async () => {
     if (!selected) return
     setSaving(true)
     try {
-      if (todayMood?.id) {
-        await updateMoodCheckIn(db, todayMood.id, selected, note)
-      } else {
-        await saveMoodCheckIn(db, { uid, date: today, mood: selected, note: note.trim() })
-      }
-      await loadData()
-      showToast(todayMood ? '今日情緒已更新！' : '情緒打卡成功！')
+      await saveMoodCheckIn(db, { uid, date: today, mood: selected, note: note.trim() })
+      await loadCheckIn()
+      setNote('')
+      setShowNote(false)
+      showToast('打卡成功！好好照顧自己 💛')
     } catch (err) {
       console.error(err)
       showToast('儲存失敗，請稍後再試')
@@ -240,183 +391,398 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
     }
   }
 
+  // ── Treehole submit ──────────────────────────────────────────
+  const handlePost = async () => {
+    const text = postText.trim()
+    if (!text) return
+    setPosting(true)
+    try {
+      const { name, emoji } = randomAnonIdentity()
+      const newPost: TreeholePost = {
+        text,
+        moodKey:   postMoodKey,
+        anonName:  name,
+        anonEmoji: emoji,
+        likes:     0,
+        resonates: 0,
+      }
+      const id = await saveTreeholePost(db, newPost)
+      setPosts(prev => [{ ...newPost, id }, ...prev])
+      setPostText('')
+      setPostMoodKey(null)
+      showToast('說出來了，感覺好一點了嗎 🍃')
+    } catch (err) {
+      console.error(err)
+      showToast('發文失敗，請稍後再試')
+    } finally {
+      setPosting(false)
+    }
+  }
+
+  // ── Reactions ────────────────────────────────────────────────
+  const handleLike = async (post: TreeholePost) => {
+    if (!post.id) return
+    const already = likedSet.current.has(post.id)
+    const delta   = already ? -1 : 1
+    already ? likedSet.current.delete(post.id) : likedSet.current.add(post.id)
+    setPosts(prev =>
+      prev.map(p => p.id === post.id ? { ...p, likes: Math.max(0, p.likes + delta) } : p)
+    )
+    await toggleTreeholeReaction(db, post.id, 'likes', delta as 1 | -1)
+    if (!already) showToast('送出了一個愛心 ❤️')
+  }
+
+  const handleResonate = async (post: TreeholePost) => {
+    if (!post.id) return
+    const already = resonatedSet.current.has(post.id)
+    const delta   = already ? -1 : 1
+    already ? resonatedSet.current.delete(post.id) : resonatedSet.current.add(post.id)
+    setPosts(prev =>
+      prev.map(p => p.id === post.id ? { ...p, resonates: Math.max(0, p.resonates + delta) } : p)
+    )
+    await toggleTreeholeReaction(db, post.id, 'resonates', delta as 1 | -1)
+    if (!already) showToast('謝謝你的共鳴 🕊️')
+  }
+
   const alreadyCheckedIn = todayMood !== null
   const todayCfg = todayMood ? getMoodConfig(todayMood.mood) : null
-  const hasChanges = !todayMood || selected !== todayMood.mood || note.trim() !== todayMood.note
+
+  const filteredPosts = activeFilter === 'all'
+    ? posts
+    : posts.filter(p => p.moodKey === activeFilter)
 
   return (
     <div className={embedded ? 'flex w-full flex-col' : 'app-page flex min-h-screen flex-col'}>
 
       {/* ── NAV ───────────────────────────────────────── */}
-      {!embedded && <AppNav
-        onBack={onBack}
-        title="情緒打卡"
-        titleIcon={<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />}
-      />}
+      {!embedded && (
+        <AppNav
+          onBack={onBack}
+          title="情緒打卡"
+          titleIcon={<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />}
+        />
+      )}
 
       {/* ── BODY ──────────────────────────────────────── */}
       <main className="flex-1 max-w-xl mx-auto w-full px-4 py-6 space-y-5">
 
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin-slow" />
-          </div>
-        ) : (
-          <>
-            {/* Tab bar */}
-            <div className="flex bg-[var(--app-surface-muted)] border rounded-xl p-1 gap-1">
-              {(['checkin', 'history'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition
-                    ${tab === t
-                      ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm'
-                      : 'app-text-muted hover:app-text'
-                    }`}
-                >
-                  {t === 'checkin' ? '今日打卡' : '歷史記錄'}
-                </button>
-              ))}
+        {/* Tab bar */}
+        <div className="flex bg-[var(--app-surface-muted)] border rounded-xl p-1 gap-1">
+          {([
+            { key: 'checkin',  label: '今日打卡' },
+            { key: 'history',  label: '歷史記錄' },
+            { key: 'treehole', label: '🌳 樹洞' },
+          ] as const).map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex-1 py-2 rounded-lg text-xs font-semibold transition
+                ${tab === t.key
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm'
+                  : 'app-text-muted hover:app-text'
+                }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── CHECK-IN TAB ──────────────────────────── */}
+        {tab === 'checkin' && (
+          loading ? (
+            <div className="flex justify-center py-20">
+              <div className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin-slow" />
             </div>
-
-            {/* ── CHECK-IN TAB ─────────────────────────── */}
-            {tab === 'checkin' && (
-              <div className="space-y-5 animate-fade-in-up">
-
-                {/* Today prompt */}
-                {!alreadyCheckedIn && (
-                  <div className="app-surface border rounded-2xl p-4">
-                    <p className="app-text-muted text-xs mb-1">{today}</p>
-                    <p className="app-text font-semibold">今天你的心情如何？</p>
-                  </div>
-                )}
-
-                {/* Mood selector */}
-                <div>
-                  <p className="app-text-muted text-xs font-semibold uppercase tracking-wider mb-3">
-                    選擇情緒
-                  </p>
-                  <div className="grid grid-cols-5 gap-2">
-                    {MOODS.map(m => {
-                      const isSelected = selected === m.level
-                      return (
-                        <button
-                          key={m.level}
-                          onClick={() => setSelected(m.level)}
-                          className={`flex flex-col items-center gap-2 py-4 rounded-2xl border-2 transition
-                            ${isSelected
-                              ? `${m.bg} ${m.border} ${m.color} scale-105 shadow-md`
-                              : 'app-surface border-[var(--app-border)] app-text-muted hover:scale-105'
-                            }
-                            cursor-pointer`}
-                        >
-                          <span className={isSelected ? m.color : 'app-text-muted'}>
-                            {m.icon}
-                          </span>
-                          <span className="text-xs font-medium">{m.label}</span>
-                        </button>
-                      )
-                    })}
+          ) : (
+            <div className="space-y-5 animate-fade-in-up">
+              {/* Today status */}
+              {alreadyCheckedIn && todayCfg ? (
+                <div className={`${todayCfg.bg} border ${todayCfg.border} rounded-2xl p-5 flex items-center gap-4`}>
+                  <todayCfg.icon />
+                  <div>
+                    <p className={`font-semibold ${todayCfg.color}`}>
+                      今天的心情：{todayCfg.label} · {todayCfg.sub}
+                    </p>
+                    <p className="app-text-muted text-sm mt-0.5">今日已打卡完成</p>
+                    {todayMood.note && (
+                      <p className="app-text-secondary text-sm mt-1.5 leading-relaxed">📝 {todayMood.note}</p>
+                    )}
                   </div>
                 </div>
+              ) : (
+                <div className="app-surface border rounded-2xl p-4">
+                  <p className="app-text-muted text-xs mb-1">{today}</p>
+                  <p className="app-text font-semibold">今天你的心情是什麼天氣呢？</p>
+                </div>
+              )}
 
-                {/* Optional note */}
-                {selected && (
-                  <div className="animate-fade-in-up">
-                    <button
-                      onClick={() => setShowNote(v => !v)}
-                      className="app-text-muted flex items-center gap-1.5 text-sm mb-3 hover:app-text transition"
-                    >
-                      <IconPencil size={16} />
-                      {showNote ? '收起備註' : '新增備註（選填）'}
-                    </button>
-                    {showNote && (
-                      <textarea
-                        value={note}
-                        onChange={e => setNote(e.target.value)}
-                        rows={3}
-                        maxLength={300}
-                        placeholder="今天發生了什麼事嗎？隨手記下來…"
-                        className="w-full app-surface-muted app-text border border-[var(--app-border)] rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-rose-400 transition leading-relaxed"
-                      />
-                    )}
-                  </div>
-                )}
-
-                {/* Submit button */}
-                {selected && (
-                  <button
-                    onClick={handleSave}
-                    disabled={saving || !hasChanges}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition flex items-center justify-center gap-2"
-                  >
-                    {saving ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin-slow" />
-                        儲存中…
-                      </>
-                    ) : (
-                      <>
-                        <IconCheck size={18} />
-                        {alreadyCheckedIn ? '儲存今日變更' : '完成打卡'}
-                      </>
-                    )}
-                  </button>
-                )}
-
-                {/* Stats & chart (if has data) */}
-                {records.length > 0 && (
-                  <>
-                    <MoodStats records={records} />
-                    <MoodBarChart records={records} />
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* ── HISTORY TAB ──────────────────────────── */}
-            {tab === 'history' && (
-              <div className="space-y-3 animate-fade-in-up">
-                {records.length === 0 ? (
-                  <div className="app-surface border rounded-2xl px-4 py-12 text-center">
-                    <IconNotes size={32} className="app-text-muted mx-auto mb-3" />
-                    <p className="app-text-muted text-sm">還沒有打卡記錄</p>
-                    <p className="app-text-muted text-xs mt-1">先去今日打卡吧！</p>
-                  </div>
-                ) : (
-                  records.map(r => {
-                    const cfg = getMoodConfig(r.mood)
+              {/* Mood grid */}
+              <div>
+                <p className="app-text-muted text-xs font-semibold uppercase tracking-wider mb-3">選擇心情</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {MOODS.map(m => {
+                    const isSelected = selected === m.key
                     return (
-                      <div
-                        key={r.id ?? r.date}
-                        className={`${cfg.bg} border ${cfg.border} rounded-2xl p-4 flex items-start gap-3 animate-fade-in-up`}
+                      <button
+                        key={m.key}
+                        onClick={() => !alreadyCheckedIn && setSelected(m.key)}
+                        disabled={alreadyCheckedIn}
+                        className={`flex flex-col items-center gap-2 py-5 px-2 rounded-2xl border-2 transition
+                          ${isSelected
+                            ? `${m.bg} ${m.border} scale-[1.04] shadow-md`
+                            : 'app-surface border-[var(--app-border)] hover:scale-[1.03]'
+                          }
+                          ${alreadyCheckedIn ? 'cursor-default' : 'cursor-pointer'}`}
                       >
-                        <div className={`${cfg.color} flex-shrink-0 mt-0.5`} aria-hidden="true">
-                          {cfg.icon}
+                        <div className={`flex items-center justify-center rounded-xl p-2 transition
+                          ${isSelected ? m.bg : 'bg-[var(--app-surface-muted)]'}`}>
+                          <m.icon />
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={`text-sm font-semibold ${cfg.color}`}>{cfg.label}</span>
-                            <span className="app-text-muted text-xs flex-shrink-0 flex items-center gap-1">
-                              <IconCalendar size={12} />
-                              {r.date}
-                            </span>
-                          </div>
-                          {r.note && (
-                            <p className="app-text-secondary text-sm mt-1.5 leading-relaxed">
-                              {r.note}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                        <span className={`text-sm font-bold ${isSelected ? m.color : 'app-text'}`}>{m.label}</span>
+                        <span className={`text-xs ${isSelected ? m.color : 'app-text-muted'}`}>{m.sub}</span>
+                      </button>
                     )
-                  })
+                  })}
+                </div>
+              </div>
+
+              {/* Optional note */}
+              {!alreadyCheckedIn && selected && (
+                <div className="animate-fade-in-up">
+                  <button
+                    onClick={() => setShowNote(v => !v)}
+                    className="app-text-muted flex items-center gap-1.5 text-sm mb-3 hover:app-text transition"
+                  >
+                    <IconPencil size={16} />
+                    {showNote ? '收起備註' : '新增備註（選填）'}
+                  </button>
+                  {showNote && (
+                    <textarea
+                      value={note}
+                      onChange={e => setNote(e.target.value)}
+                      rows={3}
+                      maxLength={300}
+                      placeholder="今天發生了什麼事嗎？隨手記下來…"
+                      className="w-full app-surface-muted app-text border border-[var(--app-border)] rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-rose-400 transition leading-relaxed"
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Submit */}
+              {!alreadyCheckedIn && (
+                <button
+                  onClick={handleSave}
+                  disabled={!selected || saving}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition flex items-center justify-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin-slow" />
+                      儲存中…
+                    </>
+                  ) : (
+                    <>
+                      <IconCheck size={18} />
+                      {selected ? `以「${getMoodConfig(selected).label}」打卡 ✓` : '選擇心情後打卡 ✓'}
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Stats & chart */}
+              {records.length > 0 && (
+                <>
+                  <MoodStats records={records} />
+                  <MoodBarChart records={records} />
+                </>
+              )}
+            </div>
+          )
+        )}
+
+        {/* ── HISTORY TAB ───────────────────────────── */}
+        {tab === 'history' && (
+          loading ? (
+            <div className="flex justify-center py-20">
+              <div className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin-slow" />
+            </div>
+          ) : (
+            <div className="space-y-3 animate-fade-in-up">
+              {records.length === 0 ? (
+                <div className="app-surface border rounded-2xl px-4 py-12 text-center">
+                  <IconNotes size={32} className="app-text-muted mx-auto mb-3" />
+                  <p className="app-text-muted text-sm">還沒有打卡記錄</p>
+                  <p className="app-text-muted text-xs mt-1">先去今日打卡吧！</p>
+                </div>
+              ) : (
+                records.map(r => {
+                  const cfg = getMoodConfig(r.mood)
+                  return (
+                    <div
+                      key={r.id ?? r.date}
+                      className={`${cfg.bg} border ${cfg.border} rounded-2xl p-4 flex items-start gap-4 animate-fade-in-up`}
+                    >
+                      <div className={`flex-shrink-0 rounded-xl p-1.5 ${cfg.bg}`}><cfg.icon /></div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`text-sm font-bold ${cfg.color}`}>{cfg.label} · {cfg.sub}</span>
+                          <span className="app-text-muted text-xs flex-shrink-0 flex items-center gap-1">
+                            <IconCalendar size={12} />{r.date}
+                          </span>
+                        </div>
+                        {r.note && (
+                          <p className="app-text-secondary text-sm mt-1.5 leading-relaxed">{r.note}</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )
+        )}
+
+        {/* ── TREEHOLE TAB ──────────────────────────── */}
+        {tab === 'treehole' && (
+          <div className="space-y-5 animate-fade-in-up">
+
+            {/* Anonymous notice */}
+            <div className="bg-[rgba(144,128,184,.1)] border border-[rgba(144,128,184,.3)] rounded-2xl p-4 flex items-start gap-3">
+              <span className="text-xl flex-shrink-0 mt-0.5">🔒</span>
+              <div>
+                <p className="text-[#7060a8] text-sm font-semibold mb-1">這裡完全匿名，沒有人知道你是誰</p>
+                <p className="text-[#9080b8] text-xs leading-relaxed">
+                  每次發文自動換一個隨機暱稱，不記名、不留位置、無個人資料。
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {['🙈 不記名','📍 不留位置','👤 無個資','🔐 本機匿名'].map(pill => (
+                    <span key={pill} className="text-[10px] px-2 py-0.5 rounded-full bg-[rgba(144,128,184,.15)] text-[#9080b8] font-medium">{pill}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Compose */}
+            <div className="app-surface border rounded-2xl p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full bg-[rgba(176,164,216,.25)] flex items-center justify-center text-xl flex-shrink-0">
+                  🌿
+                </div>
+                <textarea
+                  value={postText}
+                  onChange={e => setPostText(e.target.value)}
+                  rows={3}
+                  maxLength={300}
+                  placeholder="說說你的心裡話…這裡沒有人認識你"
+                  className="flex-1 app-surface-muted app-text border border-[var(--app-border)] rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-[#b0a4d8] transition leading-relaxed"
+                />
+              </div>
+              <div className="text-right text-xs app-text-muted">{postText.length} / 300</div>
+
+              {/* Mood tags */}
+              <div className="flex flex-wrap gap-2">
+                {MOODS.map(m => (
+                  <button
+                    key={m.key}
+                    onClick={() => setPostMoodKey(prev => prev === m.key ? null : m.key)}
+                    className={`text-xs px-3 py-1 rounded-full border font-medium transition
+                      ${postMoodKey === m.key
+                        ? `${m.border} ${m.color}`
+                        : 'border-[var(--app-border)] app-text-muted hover:border-[#b0a4d8]'
+                      }`}
+                    style={postMoodKey === m.key
+                      ? { background: m.bg.replace('bg-[', '').replace(']', '') }
+                      : undefined}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-1 border-t border-[var(--app-border)]">
+                <p className="text-xs app-text-muted flex items-center gap-1">
+                  <span>🌿</span> 發文後會自動隨機換暱稱
+                </p>
+                <button
+                  onClick={handlePost}
+                  disabled={!postText.trim() || posting}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#9080c8] to-[#b0a4d8] text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition"
+                >
+                  {posting
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin-slow" />
+                    : <IconSend size={15} />}
+                  說出來 ✦
+                </button>
+              </div>
+            </div>
+
+            {/* Feed header + filter */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="app-text text-sm font-semibold">大家的心聲</h3>
+                {posts.length > 0 && (
+                  <span className="app-text-muted text-xs">
+                    共 {filteredPosts.length} 則
+                  </span>
                 )}
               </div>
+              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                <button
+                  onClick={() => setActiveFilter('all')}
+                  className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border font-medium transition
+                    ${activeFilter === 'all'
+                      ? 'bg-[rgba(144,128,184,.2)] border-[#b0a4d8] text-[#7060a8]'
+                      : 'app-surface border-[var(--app-border)] app-text-muted'}`}
+                >
+                  全部
+                </button>
+                {MOODS.map(m => (
+                  <button
+                    key={m.key}
+                    onClick={() => setActiveFilter(m.key)}
+                    className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border font-medium transition
+                      ${activeFilter === m.key
+                        ? `${m.border} ${m.color}`
+                        : 'app-surface border-[var(--app-border)] app-text-muted'}`}
+                    style={activeFilter === m.key
+                      ? { background: m.bg.replace('bg-[', '').replace(']', '') }
+                      : undefined}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Post list */}
+            {postsLoading ? (
+              <div className="flex justify-center py-10">
+                <div className="w-8 h-8 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin-slow" />
+              </div>
+            ) : filteredPosts.length === 0 ? (
+              <div className="app-surface border rounded-2xl px-4 py-12 text-center">
+                <span className="text-4xl block mb-3">🍃</span>
+                <p className="app-text-muted text-sm">還沒有人說話</p>
+                <p className="app-text-muted text-xs mt-1">成為第一個在樹洞裡呼喊的人吧</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredPosts.map(p => (
+                  <PostCard
+                    key={p.id}
+                    post={p}
+                    liked={!!p.id && likedSet.current.has(p.id)}
+                    resonated={!!p.id && resonatedSet.current.has(p.id)}
+                    onLike={() => handleLike(p)}
+                    onResonate={() => handleResonate(p)}
+                  />
+                ))}
+              </div>
             )}
-          </>
+          </div>
         )}
+
       </main>
 
       {/* ── TOAST ─────────────────────────────────────── */}

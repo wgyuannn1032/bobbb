@@ -44,20 +44,16 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
     }
 
-    // One mood check-in per user and date. The app uses {uid}_{YYYY-MM-DD}
-    // as the document ID; legacy auto-ID records remain readable.
+    // Mood check-ins are private to their author.
     match /moods/{moodId} {
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
-        && moodId == request.auth.uid + '_' + request.resource.data.date
         && request.resource.data.keys().hasOnly([
           'uid', 'date', 'mood', 'note', 'createdAt'
         ])
         && request.resource.data.date is string
         && request.resource.data.date.size() == 10
-        && request.resource.data.mood is int
-        && request.resource.data.mood >= 1
-        && request.resource.data.mood <= 5
+        && request.resource.data.mood in ['thunder', 'rain', 'volcano', 'sunny', 'cloudy', 'rainbow']
         && request.resource.data.note is string
         && request.resource.data.note.size() <= 300
         && request.resource.data.createdAt == request.time;
@@ -65,25 +61,34 @@ service cloud.firestore {
       allow read: if request.auth != null
         && resource.data.uid == request.auth.uid;
 
-      allow update: if request.auth != null
-        && resource.data.uid == request.auth.uid
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.date == resource.data.date
-        && request.resource.data.keys().hasOnly([
-          'uid', 'date', 'mood', 'note', 'createdAt', 'updatedAt'
-        ])
-        && request.resource.data.mood is int
-        && request.resource.data.mood >= 1
-        && request.resource.data.mood <= 5
-        && request.resource.data.note is string
-        && request.resource.data.note.size() <= 300
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.updatedAt == request.time
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['mood', 'note', 'updatedAt']);
+      allow update: if false;
 
       allow delete: if request.auth != null
         && resource.data.uid == request.auth.uid;
+    }
+
+    // Treehole entries intentionally contain no user identity.
+    match /treehole/{postId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['text', 'moodKey', 'anonName', 'anonEmoji', 'likes', 'resonates', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 1000
+        && (request.resource.data.moodKey == null
+          || request.resource.data.moodKey in ['thunder', 'rain', 'volcano', 'sunny', 'cloudy', 'rainbow'])
+        && request.resource.data.anonName is string
+        && request.resource.data.anonEmoji is string
+        && request.resource.data.likes == 0
+        && request.resource.data.resonates == 0
+        && request.resource.data.createdAt == request.time;
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'resonates'])
+        && request.resource.data.likes is int
+        && request.resource.data.resonates is int
+        && request.resource.data.likes >= 0
+        && request.resource.data.resonates >= 0;
+      allow delete: if false;
     }
   }
 }
