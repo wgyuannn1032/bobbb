@@ -31,6 +31,7 @@ import {
 import { fetchDailyQuestions, DailyQuestion, todayKey, yesterdayKey, fetchAIFeedback } from '../lib/gemini'
 import { AppConfig } from '../lib/firebase'
 import DailyQuestionPage from './DailyQuestionPage'
+import FlipGamePage from './FlipGamePage'
 import AppNav from './AppNav'
 import MoodPage from './MoodPage'
 import ProfileModal from './ProfileModal'
@@ -43,7 +44,7 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'mood' | 'questions'
+type View = 'home' | 'mood' | 'questions' | 'flip'
 type QuestionTab = 'checkin' | 'history' | 'community'
 
 const GAMES = [
@@ -60,7 +61,7 @@ const GAMES = [
     color: 'text-yellow-400',
   },
   {
-    href: '/games/flip.html',
+    view: 'flip' as View,
     icon: <IconCards size={20} aria-hidden="true" />,
     label: '星際花園翻翻看',
     color: 'text-violet-400',
@@ -102,6 +103,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
       home: 'DailyGem',
       questions: '每日問答｜DailyGem',
       mood: '情緒打卡｜DailyGem',
+      flip: '星際花園翻翻看｜DailyGem',
     }
     document.title = titles[view]
   }, [view])
@@ -255,7 +257,18 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						<IconDeviceGamepad2 size={14} aria-hidden="true" />
 						紓壓小遊戲
 					</p>
-					{GAMES.map((g) => (
+					{GAMES.map((g) => g.view ? (
+						<button
+							key={g.view}
+							type="button"
+							aria-current={view === g.view ? "page" : undefined}
+							className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${view === g.view ? "bg-violet-500/15 border border-violet-500/30 app-accent shadow-sm" : "app-hover app-text-secondary"}`}
+							onClick={() => { setView(g.view); setSidebarOpen(false) }}
+						>
+							<span className={`${g.color} transition`}>{g.icon}</span>
+							<span>{g.label}</span>
+						</button>
+					) : (
 						<a
 							key={g.href}
 							href={g.href}
@@ -290,14 +303,16 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 				<AppNav
 					onOpenSidebar={() => setSidebarOpen(true)}
 					onBack={view !== "home" ? () => setView("home") : undefined}
-					title={
-						view === "questions" ? "每日問答" : view === "mood" ? "情緒打卡" : undefined
-					}
+						title={
+							view === "questions" ? "每日問答" : view === "mood" ? "情緒打卡" : view === "flip" ? "星際花園" : undefined
+						}
 					titleIcon={
 						view === "questions" ? (
 							<IconSparkles size={18} className="app-accent" aria-hidden="true" />
 						) : view === "mood" ? (
 							<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
+						) : view === "flip" ? (
+							<IconCards size={18} className="text-violet-400" aria-hidden="true" />
 						) : undefined
 					}
 				>
@@ -388,6 +403,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						answered={isQuestionAnswered}
 						onSubmit={handlePageSubmit}
 					/>
+				) : view === "flip" ? (
+					<FlipGamePage />
 				) : (
 					<main className="max-w-xl mx-auto px-4 py-6 space-y-5 w-full">
 						{/* Greeting */}
@@ -547,7 +564,11 @@ function GameCoins() {
   useEffect(() => {
     const sync = () => setCoins(parseInt(localStorage.getItem('game_coins') ?? '0', 10))
     window.addEventListener('focus', sync)
-    return () => window.removeEventListener('focus', sync)
+    window.addEventListener('game-coins-updated', sync)
+    return () => {
+      window.removeEventListener('focus', sync)
+      window.removeEventListener('game-coins-updated', sync)
+    }
   }, [])
 
   return (
