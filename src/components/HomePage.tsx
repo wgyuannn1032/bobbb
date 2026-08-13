@@ -213,9 +213,6 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 
 				{/* Games & Tools section */}
 				<nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-					{/* 遊戲金幣顯示 */}
-					<GameCoins />
-
 					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 tracking-wider">
 						💛 心情工具
 					</p>
@@ -276,6 +273,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							: undefined}
 				>
 					<div className="flex items-center gap-3 relative">
+						{/* Game coin counter */}
+						<GameCoins />
 						{/* Gem counter */}
 						<div className="app-surface flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-sm font-semibold">
 							<IconDiamond size={17} className="app-accent" aria-hidden="true" />
@@ -621,10 +620,12 @@ function GameCoins() {
   }, [])
 
   return (
-    <div className="app-surface border rounded-xl px-3 py-2.5 mb-3 flex items-center justify-between">
-      <span className="app-text-muted text-xs font-semibold">🪙 遊戲金幣</span>
+    <div
+      className="app-surface flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-sm font-semibold"
+      aria-label={`遊戲金幣 ${coins}`}
+    >
+      <span aria-hidden="true">🪙</span>
       <span className="text-sm font-bold" style={{ color: '#e65100' }}>{coins}</span>
     </div>
   )
 }
-
