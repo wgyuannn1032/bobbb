@@ -20,6 +20,7 @@ import {
   IconX,
   IconMoodSmile,
 } from '@tabler/icons-react'
+import MoodPage from './MoodPage'
 import {
   getUserData,
   UserData,
@@ -43,7 +44,7 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'history'
+type View = 'home' | 'history' | 'mood'
 
 const GAMES = [
   {
@@ -68,8 +69,8 @@ const GAMES = [
 
 const TOOLS = [
   {
-    href: '/mood.html',
-    icon: <IconMoodSmile size={20} aria-hidden="true" />,
+    view:  'mood' as View,
+    icon:  <IconMoodSmile size={20} aria-hidden="true" />,
     label: '情緒打卡',
     color: 'text-rose-400',
   },
@@ -187,6 +188,16 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
     )
   }
 
+  if (view === 'mood') {
+    return (
+      <MoodPage
+        uid={user.uid}
+        db={db}
+        onBack={() => setView('home')}
+      />
+    )
+  }
+
   return (
     <div className="app-page flex">
 
@@ -229,17 +240,14 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
             💛 心情工具
           </p>
           {TOOLS.map(t => (
-            <a
-              key={t.href}
-              href={t.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl app-hover app-text-secondary text-sm font-medium transition group"
-              onClick={() => setSidebarOpen(false)}
+            <button
+              key={t.view}
+              onClick={() => { setView(t.view); setSidebarOpen(false) }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl app-hover app-text-secondary text-sm font-medium transition w-full text-left"
             >
               <span className={`${t.color} transition`}>{t.icon}</span>
               <span>{t.label}</span>
-            </a>
+            </button>
           ))}
           <p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 mt-3 tracking-wider">
             🎮 紓壓小遊戲
@@ -399,6 +407,25 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
             </div>
           </button>
         )}
+
+        {/* Mood check-in shortcut */}
+        <button
+          onClick={() => setView('mood')}
+          className="app-surface w-full text-left border hover:border-rose-400 rounded-2xl p-4 transition group relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-rose-400 via-pink-400 to-orange-400" />
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">😊</span>
+            <div className="flex-1 min-w-0">
+              <p className="app-text text-sm font-semibold flex items-center gap-1.5">
+                <IconMoodSmile size={16} className="text-rose-400" aria-hidden="true" />
+                情緒打卡
+              </p>
+              <p className="app-text-muted text-xs mt-0.5">記錄今天的心情狀態</p>
+            </div>
+            <IconArrowRight size={18} className="app-text-muted group-hover:text-rose-400 transition flex-shrink-0" />
+          </div>
+        </button>
 
         {/* Recent answers */}
         <div>
