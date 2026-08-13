@@ -33,6 +33,7 @@ import { fetchDailyQuestion, DailyQuestion, todayKey, yesterdayKey, calcGems, fe
 import { AppConfig } from '../lib/firebase'
 import DailyModal from './DailyModal'
 import HistoryPage from './HistoryPage'
+import MoodPage from './MoodPage'
 import ProfileModal from './ProfileModal'
 
 interface Props {
@@ -43,7 +44,7 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'history'
+type View = 'home' | 'history' | 'mood'
 
 const GAMES = [
   {
@@ -68,7 +69,7 @@ const GAMES = [
 
 const TOOLS = [
   {
-    href: '/mood.html',
+    view: 'mood' as View,
     icon: <IconMoodSmile size={20} aria-hidden="true" />,
     label: '情緒打卡',
     color: 'text-rose-400',
@@ -216,17 +217,15 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						💛 心情工具
 					</p>
 					{TOOLS.map((t) => (
-						<a
-							key={t.href}
-							href={t.href}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="flex items-center gap-3 px-3 py-2.5 rounded-xl app-hover app-text-secondary text-sm font-medium transition group"
-							onClick={() => setSidebarOpen(false)}
+						<button
+							key={t.view}
+							type="button"
+							className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium app-hover app-text-secondary transition"
+							onClick={() => { setView(t.view); setSidebarOpen(false) }}
 						>
 							<span className={`${t.color} transition`}>{t.icon}</span>
 							<span>{t.label}</span>
-						</a>
+						</button>
 					))}
 					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 mt-3 tracking-wider">
 						🎮 紓壓小遊戲
@@ -274,7 +273,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						>
 							<IconMenu2 size={22} />
 						</button>
-						{view === "history" && (
+						{view !== "home" && (
 							<button
 								type="button"
 								onClick={() => setView("home")}
@@ -365,6 +364,13 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						onBack={() => setView("home")}
 						onAnswersChanged={loadData}
 					/>
+				) : view === "mood" ? (
+					<MoodPage
+						embedded
+						uid={user.uid}
+						db={db}
+						onBack={() => setView("home")}
+					/>
 				) : (
 					<main className="max-w-xl mx-auto px-4 py-6 space-y-5 w-full">
 						{/* Greeting */}
@@ -446,6 +452,26 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 								</div>
 							</button>
 						)}
+
+						{/* Mood check-in shortcut */}
+						<button
+							type="button"
+							onClick={() => setView("mood")}
+							className="app-surface group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition hover:border-rose-400"
+						>
+							<div className="absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-rose-400 via-pink-400 to-orange-400" />
+							<div className="flex items-center gap-3">
+								<span className="text-3xl" aria-hidden="true">😊</span>
+								<div className="min-w-0 flex-1">
+									<p className="app-text flex items-center gap-1.5 text-sm font-semibold">
+										<IconMoodSmile size={16} className="text-rose-400" aria-hidden="true" />
+										情緒打卡
+									</p>
+									<p className="app-text-muted mt-0.5 text-xs">記錄今天的心情狀態</p>
+								</div>
+								<IconArrowRight size={18} className="app-text-muted flex-shrink-0 transition group-hover:text-rose-400" aria-hidden="true" />
+							</div>
+						</button>
 
 						{/* Recent answers */}
 						<div>
