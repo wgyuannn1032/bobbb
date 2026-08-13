@@ -13,6 +13,8 @@
     display: flex; flex-direction: column; align-items: center;
     padding: 16px;
   }
+
+  /* ── 右上角金幣 ── */
   #coin-badge {
     position: fixed; top: 14px; right: 16px; z-index: 999;
     display: flex; align-items: center; gap: 6px;
@@ -24,35 +26,43 @@
   }
   h1 { font-size: 1.4rem; font-weight: 700; color: #7c5cd8; margin-bottom: 4px; text-shadow: 0 1px 4px #c7ceea; }
   .subtitle { font-size: .85rem; color: #b39ddb; margin-bottom: 18px; }
+
   /* ── 開始畫面 ── */
   #start-screen {
-    display: flex; flex-direction: column; align-items: center; gap: 18px;
-    background: #fff; border-radius: 24px; padding: 36px 40px;
-    box-shadow: 0 4px 28px #c7ceea; text-align: center; max-width: 360px; width: 100%;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    background: #fff; border-radius: 24px; padding: 32px 36px;
+    box-shadow: 0 4px 28px #c7ceea; text-align: center; max-width: 400px; width: 100%;
     margin-bottom: 24px;
   }
-  #start-screen .game-icon { font-size: 4rem; line-height: 1; }
-  #start-screen h2 { font-size: 1.25rem; font-weight: 700; color: #7c5cd8; }
+  #start-screen .game-icon { font-size: 3.6rem; line-height: 1; }
+  #start-screen h2 { font-size: 1.2rem; font-weight: 700; color: #7c5cd8; }
   #start-screen .rules {
     width: 100%; background: #f8f4ff; border-radius: 14px; padding: 14px 16px;
-    text-align: left; display: flex; flex-direction: column; gap: 8px;
+    text-align: left; display: flex; flex-direction: column; gap: 7px;
   }
   #start-screen .rules li {
-    font-size: .82rem; color: #5c4d8a; line-height: 1.5;
+    font-size: .81rem; color: #5c4d8a; line-height: 1.5;
     display: flex; align-items: flex-start; gap: 8px;
   }
   #start-screen .rules li .dot {
     flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%;
     background: #b39ddb; margin-top: 5px;
   }
-  #btn-start {
-    width: 100%; border: none; border-radius: 14px; padding: 14px;
-    background: linear-gradient(135deg, #c7ceea, #7c5cd8);
-    color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer;
-    letter-spacing: 1px; transition: opacity .15s, transform .1s;
-    box-shadow: 0 4px 14px rgba(124,92,216,.35);
+  /* 難度選擇按鈕群 */
+  .diff-row { display: flex; gap: 12px; width: 100%; }
+  .diff-btn {
+    flex: 1; border: 2px solid #c7ceea; border-radius: 14px; padding: 12px 6px;
+    font-size: .9rem; font-weight: 700; cursor: pointer;
+    transition: transform .12s, box-shadow .12s;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
   }
-  #btn-start:hover { opacity: .9; transform: translateY(-1px); }
+  .diff-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px #c7ceea; }
+  .diff-btn .diff-icon { font-size: 1.6rem; }
+  .diff-btn .diff-label { font-size: .78rem; color: #888; font-weight: 400; }
+  .diff-easy   { background: #f0fff4; border-color: #b5ead7; color: #2e7d52; }
+  .diff-hard   { background: #fff0f3; border-color: #ffb7c5; color: #c62828; }
+
+  /* ── 遊戲區 ── */
   #game-wrap { display: none; flex-direction: column; align-items: center; width: 100%; }
   #hud {
     display: flex; gap: 20px; align-items: center;
@@ -61,8 +71,31 @@
     font-size: .9rem; color: #5c4d8a;
   }
   #hud .val { font-weight: 700; font-size: 1.05rem; color: #7c5cd8; }
-  #canvas-wrap { position: relative; overflow: hidden; border-radius: 20px; box-shadow: 0 4px 24px #c7ceea; background: #fff; }
+  #hud .diff-badge {
+    font-size: .72rem; font-weight: 700; padding: 2px 9px; border-radius: 8px;
+  }
+  .badge-easy { background: #e8faf0; color: #2e7d52; }
+  .badge-hard { background: #ffeef1; color: #c62828; }
+
+  #canvas-wrap {
+    position: relative; overflow: hidden;
+    border-radius: 20px; box-shadow: 0 4px 24px #c7ceea; background: #fff;
+  }
   canvas { display: block; }
+
+  /* 凍結遮罩 */
+  #freeze-overlay {
+    display: none; position: absolute; inset: 0;
+    background: rgba(180,220,255,.5); border-radius: 20px;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 8px;
+    font-size: 1.8rem; font-weight: 700; color: #1565c0;
+    pointer-events: none;
+  }
+  #freeze-overlay.show { display: flex; }
+  #freeze-overlay .freeze-sub { font-size: 1rem; color: #1976d2; }
+
+  /* ── 結算面板 ── */
   #result-panel {
     display: none; flex-direction: column; align-items: center;
     background: #fff; border-radius: 20px; padding: 32px 40px;
@@ -75,24 +108,31 @@
   #result-panel .msg { font-size: 1rem; color: #5c4d8a; background: #f3e8ff; border-radius: 10px; padding: 10px 20px; }
   #checkin-toggle { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: .9rem; color: #5c4d8a; cursor: pointer; }
   #checkin-toggle input { transform: scale(1.3); accent-color: #7c5cd8; cursor: pointer; }
+  .btn-row { display: flex; gap: 12px; margin-top: 4px; }
   .btn-action {
     border: none; border-radius: 12px; padding: 10px 28px;
-    font-size: .95rem; font-weight: 600; cursor: pointer; transition: opacity .15s; margin-top: 4px;
+    font-size: .95rem; font-weight: 600; cursor: pointer; transition: opacity .15s;
   }
   .btn-restart { background: #7c5cd8; color: #fff; }
-  .btn-restart:hover { opacity: .85; }
+  .btn-home    { background: #f3e8ff; color: #7c5cd8; }
+  .btn-restart:hover, .btn-home:hover { opacity: .85; }
+
+  /* 浮動文字 */
   .float-text {
     position: absolute; font-size: 1.1rem; font-weight: 700; color: #7c5cd8;
     pointer-events: none; animation: floatUp .8s forwards; white-space: nowrap;
   }
+  .float-text.neg { color: #e53935; }
   @keyframes floatUp {
-    0% { opacity:1; transform: translateY(0); }
-    100% { opacity:0; transform: translateY(-60px); }
+    0%   { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-60px); }
   }
+
   footer { margin-top: 32px; font-size: .75rem; color: #b0b8c4; border-top: 1px solid #e5e7eb; padding-top: 10px; text-align: center; width: 100%; }
 </style>
 </head>
 <body>
+
 <div id="coin-badge">🪙 <span id="total-coins-display">0</span></div>
 <h1>🫧 泡泡啵啵樂</h1>
 <p class="subtitle">輕點夢幻馬卡龍氣泡，享受捏啵啵紙的治癒感！✨</p>
@@ -102,27 +142,45 @@
   <div class="game-icon">🫧</div>
   <h2>泡泡啵啵樂</h2>
   <ul class="rules">
-    <li><span class="dot"></span>畫面上會不斷出現彩色馬卡龍氣泡，點擊即可消除</li>
-    <li><span class="dot"></span>點破氣泡 <strong>+10 分</strong>，連擊 3 顆以上還有 Combo 加成！</li>
-    <li><span class="dot"></span>點到灰色烏雲 <strong>−5 分</strong>，要小心閃開</li>
-    <li><span class="dot"></span>氣泡會自動脹大再縮小消失，把握時機快點點！</li>
+    <li><span class="dot"></span>點擊彩色氣泡消除 <strong>+10 分</strong>，連擊 3 顆以上有 Combo 加成！</li>
+    <li><span class="dot"></span>氣泡自動脹大縮小後破掉 <strong>−5 分</strong>，要趕快點！</li>
+    <li><span class="dot"></span>點到灰色烏雲會<strong>凍結畫面</strong>（倒數繼續），凍結期間泡泡不能點也不會自爆</li>
+    <li><span class="dot"></span><strong>困難模式</strong>：泡泡更多、生成更快，挑戰極限！</li>
     <li><span class="dot"></span>限時 <strong>45 秒</strong>，看看你能拿幾分？</li>
   </ul>
-  <button id="btn-start" onclick="beginGame()">開始遊戲 ▶</button>
+  <div class="diff-row">
+    <button class="diff-btn diff-easy" onclick="beginGame('easy')">
+      <span class="diff-icon">🌿</span>
+      簡單
+      <span class="diff-label">泡泡悠閒飄</span>
+    </button>
+    <button class="diff-btn diff-hard" onclick="beginGame('hard')">
+      <span class="diff-icon">🔥</span>
+      困難
+      <span class="diff-label">泡泡狂湧現</span>
+    </button>
+  </div>
 </div>
 
+<!-- 遊戲區 -->
 <div id="game-wrap">
   <div id="hud">
+    <span class="diff-badge" id="hud-diff-badge"></span>
     <span>得分 <span class="val" id="hud-score">0</span></span>
     <span>時間 <span class="val" id="hud-time">45s</span></span>
   </div>
   <div id="canvas-wrap">
     <canvas id="gameCanvas" width="480" height="560"></canvas>
+    <div id="freeze-overlay">
+      ❄️ 凍結中！
+      <span class="freeze-sub" id="freeze-sub"></span>
+    </div>
   </div>
 </div>
 
+<!-- 結算面板 -->
 <div id="result-panel">
-  <h2>泡泡啵啵樂 — 遊戲結束！</h2>
+  <h2 id="res-title">泡泡啵啵樂 — 遊戲結束！</h2>
   <div style="font-size:.9rem;color:#888" id="res-info"></div>
   <div class="big" id="res-score"></div>
   <label class="checkin-toggle" id="checkin-toggle">
@@ -134,30 +192,50 @@
     <span style="color:#888;font-size:.9rem">金幣</span>
   </div>
   <div class="msg" id="res-msg"></div>
-  <button class="btn-action btn-restart" onclick="restartGame()">再玩一次</button>
+  <div class="btn-row">
+    <button class="btn-action btn-restart" id="btn-restart">再玩一次</button>
+    <button class="btn-action btn-home" onclick="goHome()">選難度</button>
+    <button class="btn-action btn-home" onclick="window.close()">回主頁面</button>
+  </div>
 </div>
 
 <footer>Made with IBM Bob</footer>
+
 <script>
 "use strict";
+
+// ── 常數 ──────────────────────────────────────────
 const MACARON_COLORS = ["#FFB7C5","#B5EAD7","#C7CEEA","#FFDAC1","#E2F0CB","#F8E1F4"];
 const CANVAS_W = 480, CANVAS_H = 560;
 const GAME_DURATION = 45;
-const BUBBLE_PHASE_MS = 1200;
+const BUBBLE_PHASE_MS = 1200; // 每個成長/縮小階段的毫秒數
 
-let bubbleState = { bubbles: [], score: 0, combo: 0 };
+// 難度設定
+const DIFF_CONFIG = {
+  easy: { maxBubbles: 7,  spawnMin: 900,  spawnRnd: 600, cloudChance: 0.15 },
+  hard: { maxBubbles: 14, spawnMin: 400,  spawnRnd: 300, cloudChance: 0.20 },
+};
+
+// ── 狀態 ──────────────────────────────────────────
+let difficulty  = 'easy';
+let bubbleState = { bubbles: [], score: 0, combo: 0, frozen: false, freezeUntil: 0 };
+let particles   = [];   // 爆破粒子池
 let bubbleSpawnTimer = null;
-let rafId = null;
-let startTime = 0;
+let rafId        = null;
+let startTime    = 0;
 let timerInterval = null;
-let totalCoins = 0;
+let totalCoins   = parseInt(localStorage.getItem("game_coins") ?? "0", 10);
 
 const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+const ctx    = canvas.getContext("2d");
 
 function elId(id) { return document.getElementById(id); }
-function updateCoinBadge() { elId("total-coins-display").textContent = totalCoins; }
+function updateCoinBadge() {
+  localStorage.setItem("game_coins", String(totalCoins));
+  elId("total-coins-display").textContent = totalCoins;
+}
 
+// ── HUD ──────────────────────────────────────────
 function updateHUD(score) {
   elId("hud-score").textContent = score;
   const remaining = Math.max(0, GAME_DURATION - Math.floor((Date.now() - startTime) / 1000));
@@ -166,71 +244,155 @@ function updateHUD(score) {
   timeEl.style.color = remaining <= 10 ? "#e53935" : "#7c5cd8";
 }
 
+// ── 金幣計算 ──────────────────────────────────────
 function calculateRewardCoins(score, dur, checkedIn) {
   let base = Math.floor(score * 0.1);
   if (dur >= 30 && base < 10) base = 10;
   const earned = checkedIn ? Math.round(base * 1.2) : base;
   let message;
-  if (score >= 500) message = "哇！你今天超厲害！繼續保持這份好心情";
+  if      (score >= 500) message = "哇！你今天超厲害！繼續保持這份好心情";
   else if (score >= 200) message = "太棒了！今天也辛苦囉！給自己一個大大的讚";
   else if (score >= 100) message = "做得不錯喔！慢慢來，放鬆就是目的";
-  else message = "不管分數，今天能玩就是最棒的你";
+  else                   message = "不管分數，今天能玩就是最棒的你";
   return { earned, message, bonus: checkedIn };
 }
 
-function spawnFloatText(text, x, y) {
+// ── 浮動文字 ──────────────────────────────────────
+function spawnFloatText(text, x, y, negative = false) {
   const el = document.createElement("div");
-  el.className = "float-text";
+  el.className = "float-text" + (negative ? " neg" : "");
   el.textContent = text;
-  el.style.left = x + "px"; el.style.top = y + "px";
+  el.style.left = x + "px";
+  el.style.top  = y + "px";
   elId("canvas-wrap").appendChild(el);
   setTimeout(() => el.remove(), 800);
 }
 
+// ── 生成氣泡 ──────────────────────────────────────
 function spawnBubble() {
-  const baseR = 22 + Math.random() * 22;
+  const cfg    = DIFF_CONFIG[difficulty];
+  const baseR  = 22 + Math.random() * 22;
   const margin = baseR * 2.5 + 4;
   return {
-    id: "b_" + Date.now() + "_" + Math.floor(Math.random()*9999),
-    x: margin + Math.random() * (CANVAS_W - margin * 2),
-    y: margin + Math.random() * (CANVAS_H - margin * 2),
-    baseR, radius: baseR,
-    color: MACARON_COLORS[Math.floor(Math.random()*MACARON_COLORS.length)],
-    type: Math.random() < 0.18 ? "cloud" : "bubble",
-    phase: "growing", phaseStart: Date.now(), isAlive: true,
+    id:         "b_" + Date.now() + "_" + Math.floor(Math.random() * 9999),
+    x:          margin + Math.random() * (CANVAS_W - margin * 2),
+    y:          margin + Math.random() * (CANVAS_H - margin * 2),
+    baseR,
+    radius:     baseR,
+    color:      MACARON_COLORS[Math.floor(Math.random() * MACARON_COLORS.length)],
+    type:       Math.random() < cfg.cloudChance ? "cloud" : "bubble",
+    phase:      "growing",
+    phaseStart: Date.now(),
+    isAlive:    true,
   };
 }
 
+// ── 更新氣泡脹縮（凍結時跳過，但自爆扣分仍在解凍後補算） ──
 function updateBubblePhases() {
+  // 凍結時停止所有動畫，phase 的 phaseStart 往後延
+  if (bubbleState.frozen) {
+    const now = Date.now();
+    bubbleState.bubbles.forEach(b => {
+      if (b.isAlive) b.phaseStart += (now - (b._lastTick || now));
+      b._lastTick = now;
+    });
+    return;
+  }
+
   const now = Date.now();
   bubbleState.bubbles.forEach(b => {
+    b._lastTick = now;
     if (!b.isAlive) return;
     const elapsed = now - b.phaseStart;
     const t = Math.min(elapsed / BUBBLE_PHASE_MS, 1);
     if (b.phase === "growing") {
       b.radius = b.baseR * (1 + 0.8 * t);
-      if (elapsed >= BUBBLE_PHASE_MS) { b.phase = "shrinking"; b.phaseStart = now; b.radius = b.baseR * 1.8; }
+      if (elapsed >= BUBBLE_PHASE_MS) {
+        b.phase = "shrinking"; b.phaseStart = now; b.radius = b.baseR * 1.8;
+      }
     } else if (b.phase === "shrinking") {
       b.radius = b.baseR * (1.8 - 0.8 * t);
-      if (elapsed >= BUBBLE_PHASE_MS) { b.isAlive = false; }
+      if (elapsed >= BUBBLE_PHASE_MS) {
+        // 自爆扣分（只扣氣泡，烏雲自爆不扣）
+        if (b.type === "bubble") {
+          bubbleState.score = Math.max(0, bubbleState.score - 5);
+          bubbleState.combo = 0;
+          // 自爆粒子（顏色用原色，透明度交給粒子生命週期控制）
+          spawnParticles(b.x, b.y, b.color, 10);
+          // 浮動文字（畫布座標轉外層座標）
+          const wrapRect = elId("canvas-wrap").getBoundingClientRect();
+          const cRect    = canvas.getBoundingClientRect();
+          const offX = cRect.left - wrapRect.left + b.x * (cRect.width / CANVAS_W);
+          const offY = cRect.top  - wrapRect.top  + b.y * (cRect.height / CANVAS_H) - 20;
+          spawnFloatText("−5 💥", offX, offY, true);
+        }
+        b.isAlive = false;
+      }
     }
   });
   bubbleState.bubbles = bubbleState.bubbles.filter(b => b.isAlive);
 }
 
-function drawCloud(x, y, r) {
-  ctx.beginPath();
-  ctx.arc(x, y, r*0.55, 0, Math.PI*2); ctx.arc(x+r*0.6, y+r*0.2, r*0.4, 0, Math.PI*2);
-  ctx.arc(x-r*0.5, y+r*0.2, r*0.35, 0, Math.PI*2); ctx.arc(x, y+r*0.5, r*0.45, 0, Math.PI*2);
-  ctx.arc(x+r*0.55, y+r*0.5, r*0.38, 0, Math.PI*2);
-  ctx.fillStyle = "#cfd8dc"; ctx.fill();
+// ── 粒子系統 ──────────────────────────────────────
+function spawnParticles(x, y, color, count = 10) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 / count) * i + Math.random() * 0.4;
+    const speed = 2 + Math.random() * 3;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      r:  5 + Math.random() * 5,   // 粒子更大更好看
+      color,
+      alpha: 1,
+      life:  1,           // 1 → 0
+    });
+  }
 }
 
-function drawBubble() {
+function updateParticles() {
+  particles.forEach(p => {
+    p.x    += p.vx;
+    p.y    += p.vy;
+    p.vy   += 0.12;       // 重力（稍輕，飄得更久）
+    p.vx   *= 0.94;
+    p.life -= 0.022;      // 原 0.045 → 0.022，約 0.75s 壽命（@60fps）
+    p.alpha = Math.max(0, p.life);
+  });
+  particles = particles.filter(p => p.life > 0);
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+// ── 繪製 ─────────────────────────────────────────
+function drawCloud(x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x, y, r*0.55, 0, Math.PI*2);
+  ctx.arc(x+r*0.6, y+r*0.2, r*0.4, 0, Math.PI*2);
+  ctx.arc(x-r*0.5, y+r*0.2, r*0.35, 0, Math.PI*2);
+  ctx.arc(x, y+r*0.5, r*0.45, 0, Math.PI*2);
+  ctx.arc(x+r*0.55, y+r*0.5, r*0.38, 0, Math.PI*2);
+  ctx.fillStyle = "#cfd8dc";
+  ctx.fill();
+}
+
+function drawScene() {
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
   const bg = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H);
   bg.addColorStop(0, "#fce4ec"); bg.addColorStop(1, "#e8eaf6");
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
   bubbleState.bubbles.forEach(b => {
     if (!b.isAlive) return;
     const r = b.radius;
@@ -241,28 +403,67 @@ function drawBubble() {
       ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI*2);
       ctx.fillStyle = b.color + "cc"; ctx.fill();
       ctx.strokeStyle = "#fff8"; ctx.lineWidth = 2; ctx.stroke();
+      // 光澤
       ctx.beginPath(); ctx.arc(b.x - r*0.3, b.y - r*0.3, r*0.25, 0, Math.PI*2);
       ctx.fillStyle = "#ffffff55"; ctx.fill();
     }
     ctx.restore();
   });
+
+  // 粒子
+  drawParticles();
+
+  // 凍結時整體加藍色濾鏡
+  if (bubbleState.frozen) {
+    ctx.fillStyle = "rgba(180,220,255,0.22)";
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  }
 }
 
+// ── 凍結控制 ──────────────────────────────────────
+function triggerFreeze(sec) {
+  bubbleState.frozen    = true;
+  bubbleState.freezeUntil = Date.now() + sec * 1000;
+  const overlay = elId("freeze-overlay");
+  overlay.classList.add("show");
+  // 初始化每顆泡泡的 _lastTick
+  const now = Date.now();
+  bubbleState.bubbles.forEach(b => { b._lastTick = now; });
+
+  const tick = setInterval(() => {
+    const left = Math.ceil((bubbleState.freezeUntil - Date.now()) / 1000);
+    elId("freeze-sub").textContent = left > 0 ? `${left} 秒後解凍` : "";
+    if (Date.now() >= bubbleState.freezeUntil) {
+      bubbleState.frozen = false;
+      overlay.classList.remove("show");
+      clearInterval(tick);
+    }
+  }, 200);
+}
+
+// ── 結算 ─────────────────────────────────────────
 function showResult(score) {
+  particles = [];
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   if (bubbleSpawnTimer) { clearTimeout(bubbleSpawnTimer); bubbleSpawnTimer = null; }
+  bubbleState.frozen = false;
+  elId("freeze-overlay").classList.remove("show");
   elId("game-wrap").style.display = "none";
+
   const dur = Math.floor((Date.now() - startTime) / 1000);
-  elId("res-info").textContent = `遊玩時間：${dur} 秒`;
+  const diffLabel = difficulty === 'hard' ? "困難" : "簡單";
+  elId("res-title").textContent = `泡泡啵啵樂（${diffLabel}）— 遊戲結束！`;
+  elId("res-info").textContent  = `遊玩時間：${dur} 秒`;
   elId("res-score").textContent = score + " 分";
-  elId("checkin-cb").checked = false;
+  elId("checkin-cb").checked    = false;
+
   let lastEarned = 0;
   function refresh() {
     const r = calculateRewardCoins(score, dur, elId("checkin-cb").checked);
     elId("res-coins").textContent = r.earned;
-    elId("res-msg").textContent = r.message + (r.bonus ? "（已享打卡 1.2× 加成）" : "");
-    totalCoins = Math.max(0, totalCoins - lastEarned + r.earned);
+    elId("res-msg").textContent   = r.message + (r.bonus ? "（已享打卡 1.2× 加成）" : "");
+    totalCoins = Math.max(0, (parseInt(localStorage.getItem("game_coins") ?? "0", 10)) - lastEarned + r.earned);
     lastEarned = r.earned;
     updateCoinBadge();
   }
@@ -271,65 +472,111 @@ function showResult(score) {
   elId("result-panel").classList.add("active");
 }
 
-function beginGame() {
+// ── 開始/重啟 ─────────────────────────────────────
+function beginGame(diff) {
+  difficulty = diff;
   elId("start-screen").style.display = "none";
   startGame();
 }
 
+function goHome() {
+  elId("result-panel").classList.remove("active");
+  elId("start-screen").style.display = "flex";
+}
+
+function goMainPage() { window.location.href = "/"; }
+
 function startGame() {
-  bubbleState = { bubbles: [], score: 0, combo: 0 };
+  const cfg = DIFF_CONFIG[difficulty];
+
+  bubbleState = { bubbles: [], score: 0, combo: 0, frozen: false, freezeUntil: 0 };
+  particles   = [];
   startTime = Date.now();
   elId("game-wrap").style.display = "flex";
   elId("result-panel").classList.remove("active");
+  elId("freeze-overlay").classList.remove("show");
+
+  // 難度徽章
+  const badge = elId("hud-diff-badge");
+  badge.textContent = difficulty === 'hard' ? "🔥 困難" : "🌿 簡單";
+  badge.className   = "diff-badge " + (difficulty === 'hard' ? "badge-hard" : "badge-easy");
+
   updateHUD(0);
   if (bubbleSpawnTimer) clearTimeout(bubbleSpawnTimer);
 
+  // 生成排程
   function scheduleNext() {
-    const delay = 900 + Math.random() * 600;
+    const delay = cfg.spawnMin + Math.random() * cfg.spawnRnd;
     bubbleSpawnTimer = setTimeout(() => {
-      if (bubbleState.bubbles.length < 7) bubbleState.bubbles.push(spawnBubble());
+      if (bubbleState.bubbles.length < cfg.maxBubbles) {
+        bubbleState.bubbles.push(spawnBubble());
+      }
       scheduleNext();
     }, delay);
   }
   scheduleNext();
 
+  // 點擊事件
   canvas.onclick = (e) => {
+    // 凍結中不能點
+    if (bubbleState.frozen) return;
+
     const rect = canvas.getBoundingClientRect();
     const mx = (e.clientX - rect.left) * (CANVAS_W / rect.width);
     const my = (e.clientY - rect.top)  * (CANVAS_H / rect.height);
+
     for (let i = bubbleState.bubbles.length - 1; i >= 0; i--) {
       const b = bubbleState.bubbles[i];
       if (!b.isAlive) continue;
       const dx = mx - b.x, dy = my - b.y;
       if (dx*dx + dy*dy <= b.radius*b.radius) {
-        const isCloud = b.type === "cloud";
-        b.isAlive = false;
-        if (isCloud) { bubbleState.score = Math.max(0, bubbleState.score - 5); bubbleState.combo = 0; }
-        else { bubbleState.score += 10; bubbleState.combo++; }
-        spawnFloatText(
-          isCloud ? "-5" : (bubbleState.combo >= 3 ? `+10  ${bubbleState.combo}x Combo!` : "+10"),
-          e.clientX - elId("canvas-wrap").getBoundingClientRect().left,
-          e.clientY - elId("canvas-wrap").getBoundingClientRect().top - 20
-        );
+        const wrapRect = elId("canvas-wrap").getBoundingClientRect();
+        const fx = e.clientX - wrapRect.left;
+        const fy = e.clientY - wrapRect.top - 20;
+
+        if (b.type === "cloud") {
+          // 點烏雲 → 凍結畫面 2 秒 + 雲朵爆散粒子
+          b.isAlive = false;
+          spawnParticles(b.x, b.y, "#b0bec5", 12);
+          triggerFreeze(2);
+          spawnFloatText("❄️ 凍結 2s", fx, fy, true);
+        } else {
+          // 點氣泡 → 加分 + 彩色爆破粒子
+          b.isAlive = false;
+          spawnParticles(b.x, b.y, b.color, 12);
+          bubbleState.score += 10;
+          bubbleState.combo++;
+          const label = bubbleState.combo >= 3
+            ? `+10  ${bubbleState.combo}x Combo!`
+            : "+10";
+          spawnFloatText(label, fx, fy, false);
+        }
+        updateHUD(bubbleState.score);
         break;
       }
     }
-    updateHUD(bubbleState.score);
   };
 
   timerInterval = setInterval(() => updateHUD(bubbleState.score), 500);
 
   function loop() {
-    updateBubblePhases();
-    if ((Date.now() - startTime) >= GAME_DURATION * 1000) { showResult(bubbleState.score); return; }
-    drawBubble();
+    if ((Date.now() - startTime) >= GAME_DURATION * 1000) {
+      drawScene(); // 最後一幀仍畫出殘留粒子
+      showResult(bubbleState.score); return;
+    }
+    updateBubblePhases(); // 可能產生新粒子
+    drawScene();          // 先畫（讓新粒子第一幀就出現在原點）
+    updateParticles();    // 再更新位置（下一幀才移動）
     rafId = requestAnimationFrame(loop);
   }
   rafId = requestAnimationFrame(loop);
 }
 
-function restartGame() { elId("result-panel").classList.remove("active"); startGame(); }
-// 不自動開始，等玩家點擊開始
+// 再玩一次：同難度重新開始
+elId("btn-restart").onclick = () => {
+  elId("result-panel").classList.remove("active");
+  startGame();
+};
 </script>
 </body>
 </html>
