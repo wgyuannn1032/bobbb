@@ -1,9 +1,9 @@
 // src/lib/firestore.ts  — Firestore CRUD helpers
 
 import {
-  doc, getDoc, updateDoc, deleteDoc, runTransaction,
+  doc, getDoc, setDoc, updateDoc, deleteDoc, runTransaction,
   collection, addDoc, query, where,
-  getDocs, serverTimestamp, Firestore,
+  getDocs, serverTimestamp, writeBatch, Firestore,
 } from 'firebase/firestore'
 import { User } from 'firebase/auth'
 
@@ -24,6 +24,7 @@ export interface AnswerRecord {
   id?:             string
   uid:             string
   date:            string
+  questionId?:     string
   question:        string
   category:        string
   answer:          string
@@ -35,7 +36,7 @@ export interface AnswerRecord {
   updatedAt?:      unknown
 }
 
-type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'createdAt'> & {
+type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'createdAt' | 'updatedAt'> & {
   isPublic:       boolean
   authorName:     string
   authorPhotoURL: string | null
@@ -99,7 +100,11 @@ export async function rewardUser(
   currentData:  UserData
 ): Promise<{ newGems: number; newStreak: number }> {
   const prevDate  = currentData.lastAnsweredDate
-  const newStreak = prevDate === yesterday ? (currentData.streak || 0) + 1 : 1
+  const newStreak = prevDate === today
+    ? (currentData.streak || 0)
+    : prevDate === yesterday
+      ? (currentData.streak || 0) + 1
+      : 1
   const newGems   = (currentData.gems || 0) + gemsEarned
 
   await updateDoc(doc(db, 'users', uid), {
@@ -235,4 +240,55 @@ function timestampMillis(value: unknown): number {
     }
   }
   return 0
+}
+
+// ── Treehole Posts ──────────────────────────────────────────
+
+export type TreeholeMoodKey = MoodLevel
+
+export interface TreeholePost {
+  id?:            string
+  text:           string
+  moodKey:        TreeholeMoodKey | null
+  anonName:       string
+  anonEmoji:      string
+  likes:          number
+  resonates:      number
+  createdAt?:     unknown
+}
+
+export async function saveTreeholePost(
+  db:     Firestore,
+  post:   Omit<TreeholePost, 'id' | 'createdAt'>
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'treehole'), {
+    ...post,
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function fetchTreeholePosts(
+  db:  Firestore,
+  max: number = 100
+): Promise<TreeholePost[]> {
+  const q    = query(collection(db, 'treehole'))
+  const snap = await getDocs(q)
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as TreeholePost))
+    .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
+    .slice(0, max)
+}
+
+export async function toggleTreeholeReaction(
+  db:       Firestore,
+  postId:   string,
+  field:    'likes' | 'resonates',
+  delta:    1 | -1
+): Promise<void> {
+  const ref = doc(db, 'treehole', postId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return
+  const current = (snap.data()[field] as number) ?? 0
+  await updateDoc(ref, { [field]: Math.max(0, current + delta) })
 }

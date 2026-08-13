@@ -17,12 +17,14 @@ type Stage = 'loading' | 'question' | 'reward'
 
 interface Props {
   question:     DailyQuestion | null
+  questionIndex: number
+  totalQuestions: number
   geminiApiKey: string
   onSubmit:     (answer: string, gems: number, isPublic: boolean) => Promise<string> // returns AI feedback
   onClose:      () => void
 }
 
-export default function DailyModal({ question, geminiApiKey, onSubmit, onClose }: Props) {
+export default function DailyModal({ question, questionIndex, totalQuestions, geminiApiKey, onSubmit, onClose }: Props) {
   const [stage,    setStage]    = useState<Stage>(question ? 'question' : 'loading')
   const [answer,   setAnswer]   = useState('')
   const [gems,     setGems]     = useState(3)
@@ -85,7 +87,7 @@ export default function DailyModal({ question, geminiApiKey, onSubmit, onClose }
             <div className="flex items-center justify-between mb-3">
               <span className="app-accent flex items-center gap-1 text-xs font-semibold bg-violet-500/15 px-3 py-1 rounded-full">
                 <IconSparkles size={14} aria-hidden="true" />
-                今日一問
+                今日問題 {questionIndex + 1}/{totalQuestions}
               </span>
               <button onClick={onClose} aria-label="關閉" className="app-text-muted app-hover p-1 rounded-lg">
                 <IconX size={20} aria-hidden="true" />

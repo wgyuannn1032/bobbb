@@ -47,40 +47,51 @@ export function yesterdayKey(): string {
 }
 
 export interface DailyQuestion {
+  id: string
   text: string
   category: string
 }
 
 const QUESTION_CACHE_PREFIX = 'dailygem_q_'
+export const DAILY_QUESTION_COUNT = 3
 
-export async function fetchDailyQuestion(geminiApiKey?: string): Promise<DailyQuestion> {
+export async function fetchDailyQuestions(geminiApiKey?: string): Promise<DailyQuestion[]> {
   const key    = QUESTION_CACHE_PREFIX + todayKey()
   const cached = localStorage.getItem(key)
   if (cached) {
-    try { return JSON.parse(cached) as DailyQuestion } catch (_) {}
+    try {
+      const parsed = JSON.parse(cached) as DailyQuestion[] | Omit<DailyQuestion, 'id'>
+      if (Array.isArray(parsed) && parsed.length >= DAILY_QUESTION_COUNT) return parsed
+    } catch (_) {}
   }
 
-  let question: DailyQuestion | null = null
+  let questions: DailyQuestion[] | null = null
 
   if (geminiApiKey) {
-    question = await fetchFromGemini(geminiApiKey)
+    questions = await fetchFromGemini(geminiApiKey)
   }
 
-  if (!question) {
+  if (!questions) {
     const doy = getDayOfYear()
-    question = FALLBACK_QUESTIONS[doy % FALLBACK_QUESTIONS.length]
+    questions = Array.from({ length: DAILY_QUESTION_COUNT }, (_, index) => ({
+      id: `q${index + 1}`,
+      ...FALLBACK_QUESTIONS[(doy + index * 5) % FALLBACK_QUESTIONS.length],
+    }))
   }
 
-  localStorage.setItem(key, JSON.stringify(question))
-  return question
+  localStorage.setItem(key, JSON.stringify(questions))
+  return questions
 }
 
-async function fetchFromGemini(apiKey: string): Promise<DailyQuestion | null> {
-  const doy      = getDayOfYear()
-  const category = CATEGORIES[doy % CATEGORIES.length]
-  const prompt   =
-    `你是一位深思熟慮的引導者。請針對主題「${category}」提供一個中文的開放式簡述題，` +
-    `問題要引發深度自我反思，字數在 30~60 字之間，不要加任何前言或編號，只輸出問題本身。`
+async function fetchFromGemini(apiKey: string): Promise<DailyQuestion[] | null> {
+  const doy = getDayOfYear()
+  const categories = Array.from({ length: DAILY_QUESTION_COUNT }, (_, index) =>
+    CATEGORIES[(doy + index * 3) % CATEGORIES.length]
+  )
+  const prompt =
+    `你是一位深思熟慮的引導者。請分別針對「${categories.join('、')}」提供 ${DAILY_QUESTION_COUNT} 個繁體中文開放式問題。` +
+    `每題需引發深度自我反思，長度 30~60 字。只輸出 JSON 陣列，格式為 ` +
+    `[{"category":"主題","text":"問題"}]，不要加入 Markdown 或其他文字。`
 
   try {
     const resp = await fetch(
@@ -90,14 +101,24 @@ async function fetchFromGemini(apiKey: string): Promise<DailyQuestion | null> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents:         [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.9, maxOutputTokens: 120 },
+          generationConfig: { temperature: 0.9, maxOutputTokens: 500 },
         }),
       }
     )
     const data = await resp.json()
     const text: string | undefined =
       data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-    if (text) return { text, category }
+    if (text) {
+      const parsed = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, '')) as Array<Partial<DailyQuestion>>
+      if (Array.isArray(parsed) && parsed.length >= DAILY_QUESTION_COUNT) {
+        const generated = parsed.slice(0, DAILY_QUESTION_COUNT).map((question, index) => ({
+          id: `q${index + 1}`,
+          category: question.category?.trim() || categories[index],
+          text: question.text?.trim() || '',
+        })).filter(question => question.text.length > 0)
+        if (generated.length === DAILY_QUESTION_COUNT) return generated
+      }
+    }
   } catch (_) {}
   return null
 }

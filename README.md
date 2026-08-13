@@ -57,7 +57,7 @@ firebase deploy --only firestore:rules
 | 功能 | 說明 |
 |------|------|
 | 🔐 登入/註冊 | Email+密碼 或 Google OAuth |
-| 💬 每日一問 | Gemini AI 每天生成不同主題的深度問題 |
+| 💬 每日問題 | Gemini AI 每天生成 3 個不同主題的深度問題 |
 | 💎 寶石獎勵 | 20~99字 → 3顆，100~199字 → 4顆，200字以上 → 5顆 |
 | 🔥 連續天數 | 連續每天作答累積連勤 |
 | 📜 歷史記錄 | 查看所有歷史問答 |
@@ -84,9 +84,10 @@ publicProfiles/{uid}
   displayName: string
   photoURL:    string | null
 
-answers/{auto-id}
+answers/{uid}_{YYYY-MM-DD}_{questionId}
   uid:       string   (User ID，對應 publicProfiles/{uid})
   date:      string   (YYYY-MM-DD)
+  questionId: string  (q1、q2、q3)
   question:  string
   category:  string
   answer:    string

@@ -26,13 +26,16 @@ service cloud.firestore {
     match /answers/{answerId} {
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
+        && answerId == request.auth.uid + '_' + request.resource.data.date
+          + '_' + request.resource.data.questionId
         && request.resource.data.answer is string
         && request.resource.data.answer.size() >= 20
         && request.resource.data.isPublic is bool
         && request.resource.data.keys().hasOnly([
-          'uid', 'date', 'question', 'category', 'answer', 'gems',
+          'uid', 'date', 'questionId', 'question', 'category', 'answer', 'gems',
           'isPublic', 'createdAt'
-        ]);
+        ])
+        && request.resource.data.questionId is string;
 
       allow read: if request.auth != null
         && (resource.data.uid == request.auth.uid
