@@ -240,7 +240,11 @@ function spawnBatch(count) {
       y: -40 - i * 30,
       w, h,
       type: isObstacle ? "obstacle" : "meteor",
-      speed, alive: true, cloudR, pauseSec,
+      speed,
+      // 流星會逐幀加速，烏雲則維持原本速度。
+      acceleration: isObstacle ? 0 : 0.025,
+      maxSpeed: isObstacle ? Infinity : 6.5,
+      alive: true, cloudR, pauseSec,
     });
   }
 }
@@ -370,7 +374,11 @@ function startGame() {
     if (keysDown["ArrowLeft"]  || keysDown["a"] || keysDown["A"]) wishState.petX = Math.max(PET_W/2, wishState.petX - 7);
     if (keysDown["ArrowRight"] || keysDown["d"] || keysDown["D"]) wishState.petX = Math.min(CANVAS_W - PET_W/2, wishState.petX + 7);
 
-    wishState.objects.forEach(o => { if (o.alive) o.y += o.speed; });
+    wishState.objects.forEach(o => {
+      if (!o.alive) return;
+      if (o.type === "meteor") o.speed = Math.min(o.maxSpeed, o.speed + o.acceleration);
+      o.y += o.speed;
+    });
     wishState.objects.forEach(o => {
       if (!o.alive) return;
       if (checkCollision(wishState.petX, o)) {

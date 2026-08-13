@@ -25,6 +25,8 @@ type FallingObject = {
   h: number
   type: 'meteor' | 'obstacle'
   speed: number
+  acceleration: number
+  maxSpeed: number
   cloudRadius: number
   pauseSeconds: number
 }
@@ -207,6 +209,9 @@ export default function WishGamePage() {
         h: obstacle ? radius * 1.6 : 28,
         type: obstacle ? 'obstacle' : 'meteor',
         speed: obstacle ? 1.5 + (1 - radius / 45) + Math.random() * .3 : 2.5 + Math.random() * 1.5,
+        // 流星越落越快；烏雲維持固定速度，讓難度與凍結懲罰保持可預期。
+        acceleration: obstacle ? 0 : .025,
+        maxSpeed: obstacle ? Number.POSITIVE_INFINITY : 6.5,
         cloudRadius: radius,
         pauseSeconds: obstacle ? cloud.pauseSeconds : 0,
       })
@@ -235,7 +240,12 @@ export default function WishGamePage() {
       if (keysRef.current.has('arrowright') || keysRef.current.has('d')) petXRef.current += 7 * frameScale
       petXRef.current = Math.max(PET_W / 2, Math.min(CANVAS_W - PET_W / 2, petXRef.current))
 
-      for (const object of objectsRef.current) object.y += object.speed * frameScale
+      for (const object of objectsRef.current) {
+        if (object.type === 'meteor') {
+          object.speed = Math.min(object.maxSpeed, object.speed + object.acceleration * frameScale)
+        }
+        object.y += object.speed * frameScale
+      }
       const remainingObjects: FallingObject[] = []
       for (const object of objectsRef.current) {
         const hit = petXRef.current - PET_W / 2 < object.x + object.w / 2
@@ -340,7 +350,7 @@ export default function WishGamePage() {
 
 			{phase === "intro" && (
 				<section className="app-surface rounded-2xl border p-5">
-          <p class="app-text text-base font-semibold">遊戲規則</p>
+          <p className="app-text text-base font-semibold">遊戲規則</p>
 					<ul className="app-surface-muted app-text-secondary mt-4 space-y-2 rounded-xl border border-[var(--app-border)] p-4 text-sm">
 						<li className="flex items-start gap-2">
 							<IconStar
