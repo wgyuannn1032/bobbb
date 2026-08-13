@@ -284,23 +284,8 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
             {tab === 'checkin' && (
               <div className="space-y-5 animate-fade-in-up">
 
-                {/* Today status */}
-                {alreadyCheckedIn && todayCfg ? (
-                  <div className={`${todayCfg.bg} border ${todayCfg.border} rounded-2xl p-5 flex items-center gap-4`}>
-                    <span className="text-4xl">{todayCfg.emoji}</span>
-                    <div>
-                      <p className={`font-semibold ${todayCfg.color}`}>
-                        今天的心情：{todayCfg.label}
-                      </p>
-                      <p className="app-text-muted text-sm mt-0.5">今日已打卡，可隨時修改</p>
-                      {todayMood.note && (
-                        <p className="app-text-secondary text-sm mt-1.5 leading-relaxed">
-                          📝 {todayMood.note}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
+                {/* Today prompt */}
+                {!alreadyCheckedIn && (
                   <div className="app-surface border rounded-2xl p-4">
                     <p className="app-text-muted text-xs mb-1">{today}</p>
                     <p className="app-text font-semibold">今天你的心情如何？</p>
