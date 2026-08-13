@@ -7,16 +7,25 @@ import {
 } from '@tabler/icons-react'
 import { DailyQuestion, calcGems } from '../lib/gemini'
 import { AnswerRecord } from '../lib/firestore'
+import { Firestore } from 'firebase/firestore'
+import HistoryPage from './HistoryPage'
 
 interface Props {
   questions: DailyQuestion[]
   initialQuestionIndex: number
   publicAnswers: AnswerRecord[]
+  initialTab: Tab
+  db: Firestore
+  uid: string
+  gems: number
+  onAnswersChanged: () => Promise<void>
   answered: (question: DailyQuestion) => boolean
   onSubmit: (questionIndex: number, answer: string, gems: number, isPublic: boolean) => Promise<string>
 }
 
-export default function DailyQuestionPage({ questions, initialQuestionIndex, publicAnswers, answered, onSubmit }: Props) {
+type Tab = 'checkin' | 'history' | 'community'
+
+export default function DailyQuestionPage({ questions, initialQuestionIndex, publicAnswers, initialTab, db, uid, gems, onAnswersChanged, answered, onSubmit }: Props) {
   const firstOpen = questions.findIndex(question => !answered(question))
   const [questionIndex, setQuestionIndex] = useState(Math.max(0, initialQuestionIndex >= 0 ? initialQuestionIndex : firstOpen))
   const [answer, setAnswer] = useState('')
@@ -24,6 +33,7 @@ export default function DailyQuestionPage({ questions, initialQuestionIndex, pub
   const [feedback, setFeedback] = useState('')
   const [busy, setBusy] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [tab, setTab] = useState<Tab>(initialTab)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const question = questions[questionIndex]
   const minLength = 20
@@ -64,6 +74,32 @@ export default function DailyQuestionPage({ questions, initialQuestionIndex, pub
 
   return (
     <main className="max-w-xl mx-auto px-4 py-6 space-y-5 w-full animate-fade-in-up">
+      <div className="app-surface border rounded-xl p-1 flex gap-1">
+        {([
+          ['checkin', '今日打卡'],
+          ['history', '歷史紀錄'],
+          ['community', '社群回答'],
+        ] as [Tab, string][]).map(([key, label]) => (
+          <button key={key} type="button" onClick={() => setTab(key)} className={`flex-1 rounded-lg py-2 text-xs font-semibold transition ${tab === key ? 'bg-violet-500/15 app-accent' : 'app-text-muted app-hover'}`}>{label}</button>
+        ))}
+      </div>
+
+      {tab === 'history' ? (
+        <HistoryPage embedded db={db} uid={uid} gems={gems} onBack={() => undefined} onAnswersChanged={onAnswersChanged} />
+      ) : tab === 'community' ? (
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <IconWorld size={18} className="app-accent" aria-hidden="true" />
+            <h3 className="app-text text-sm font-semibold">社群回答</h3>
+          </div>
+          {publicAnswers.length === 0 ? (
+            <div className="app-surface border rounded-xl px-4 py-6 text-center">
+              <IconWorld size={28} className="app-text-muted mx-auto mb-2" aria-hidden="true" />
+              <p className="app-text-muted text-sm">目前還沒有其他人的匿名回答</p>
+            </div>
+          ) : <div className="space-y-3">{publicAnswers.map(record => <PublicAnswerCard key={record.id} record={record} />)}</div>}
+        </section>
+      ) : <>
       <section className="app-surface border rounded-2xl p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
@@ -108,22 +144,7 @@ export default function DailyQuestionPage({ questions, initialQuestionIndex, pub
         </section>
       )}
 
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <IconWorld size={18} className="app-accent" aria-hidden="true" />
-          <h3 className="app-text text-sm font-semibold">社群回答</h3>
-        </div>
-        {publicAnswers.length === 0 ? (
-          <div className="app-surface border rounded-xl px-4 py-6 text-center">
-            <IconWorld size={28} className="app-text-muted mx-auto mb-2" aria-hidden="true" />
-            <p className="app-text-muted text-sm">目前還沒有其他人的匿名回答</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {publicAnswers.map(record => <PublicAnswerCard key={record.id} record={record} />)}
-          </div>
-        )}
-      </section>
+      </>}
     </main>
   )
 }

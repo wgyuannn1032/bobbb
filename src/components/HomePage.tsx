@@ -6,14 +6,13 @@ import {
   IconArrowRight,
   IconCircleCheck,
   IconDiamond,
-  IconEdit,
   IconFlame,
-  IconHistory,
   IconLogout,
   IconSparkles,
   IconBubble,
   IconStars,
   IconCards,
+  IconCoin,
   IconHeart,
   IconDeviceGamepad2,
   IconUserEdit,
@@ -33,7 +32,6 @@ import { fetchDailyQuestions, DailyQuestion, todayKey, yesterdayKey, fetchAIFeed
 import { AppConfig } from '../lib/firebase'
 import DailyQuestionPage from './DailyQuestionPage'
 import AppNav from './AppNav'
-import HistoryPage from './HistoryPage'
 import MoodPage from './MoodPage'
 import ProfileModal from './ProfileModal'
 
@@ -45,7 +43,8 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'history' | 'mood' | 'questions'
+type View = 'home' | 'mood' | 'questions'
+type QuestionTab = 'checkin' | 'history' | 'community'
 
 const GAMES = [
   {
@@ -91,6 +90,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
   const [publicAnswers, setPublicAnswers] = useState<AnswerRecord[]>([])
   const [questions,   setQuestions]   = useState<DailyQuestion[]>([])
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
+  const [questionTab, setQuestionTab] = useState<QuestionTab>('checkin')
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [toast,       setToast]       = useState<{ msg: string; type: string } | null>(null)
@@ -142,6 +142,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
     if (userData && questions.length > 0 && completedQuestionCount === 0) {
       const timer = setTimeout(() => {
         setActiveQuestionIndex(0)
+        setQuestionTab('checkin')
         setView('questions')
       }, 800)
       return () => clearTimeout(timer)
@@ -231,7 +232,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 									? 'bg-rose-500/15 border border-rose-500/30 text-rose-400 shadow-sm'
 									: 'app-hover app-text-secondary'
 							}`}
-							onClick={() => { setView(t.view); setSidebarOpen(false) }}
+							onClick={() => { if (t.view === 'questions') setQuestionTab('checkin'); setView(t.view); setSidebarOpen(false) }}
 						>
 							<span className={`${t.color} transition`}>{t.icon}</span>
 							<span>{t.label}</span>
@@ -276,10 +277,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 				<AppNav
 					onOpenSidebar={() => setSidebarOpen(true)}
 					onBack={view !== "home" ? () => setView("home") : undefined}
-					title={view === "history" ? "歷史記錄" : view === "mood" ? "情緒打卡" : undefined}
-					titleIcon={view === "history"
-						? <IconHistory size={18} className="app-accent" aria-hidden="true" />
-						: view === "mood"
+					title={view === "questions" ? "每日問答" : view === "mood" ? "情緒打卡" : undefined}
+					titleIcon={view === "questions" ? <IconSparkles size={18} className="app-accent" aria-hidden="true" /> : view === "mood"
 							? <IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
 							: undefined}
 				>
@@ -287,9 +286,12 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						{/* Game coin counter */}
 						<GameCoins />
 						{/* Gem counter */}
-						<div className="app-surface flex h-9 items-center gap-1.5 border px-4 rounded-full text-sm font-semibold">
-							<IconDiamond size={17} className="app-accent" aria-hidden="true" />
-							<span>{userData?.gems ?? 0}</span>
+						<div className="group relative">
+							<div className="app-surface flex h-9 items-center gap-1.5 border px-4 rounded-full text-sm font-semibold" tabIndex={0} aria-describedby="gem-tooltip">
+								<IconDiamond size={17} className="app-accent" aria-hidden="true" />
+								<span>{userData?.gems ?? 0}</span>
+							</div>
+							<span id="gem-tooltip" role="tooltip" className="pointer-events-none absolute right-0 top-full z-50 mt-2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">累積寶石</span>
 						</div>
 						{/* Avatar */}
 						<button
@@ -328,16 +330,6 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 								</button>
 								<button
 									onClick={() => {
-										setView("history");
-										setProfileOpen(false);
-									}}
-									className="app-hover app-text-secondary w-full flex items-center gap-2 text-left px-3 py-2 text-sm transition"
-								>
-									<IconHistory size={17} aria-hidden="true" />
-									歷史記錄
-								</button>
-								<button
-									onClick={() => {
 										onLogout();
 										setProfileOpen(false);
 									}}
@@ -352,16 +344,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 				</AppNav>
 
 				{/* ── BODY ────────────────────────────────────── */}
-				{view === "history" ? (
-					<HistoryPage
-						embedded
-						db={db}
-						uid={user.uid}
-						gems={userData?.gems ?? 0}
-						onBack={() => setView("home")}
-						onAnswersChanged={loadData}
-					/>
-				) : view === "mood" ? (
+				{view === "mood" ? (
 					<MoodPage
 						embedded
 						uid={user.uid}
@@ -373,6 +356,11 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						questions={questions}
 						initialQuestionIndex={activeQuestionIndex}
 						publicAnswers={publicAnswers}
+						initialTab={questionTab}
+						db={db}
+						uid={user.uid}
+						gems={userData?.gems ?? 0}
+						onAnswersChanged={loadData}
 						answered={isQuestionAnswered}
 						onSubmit={handlePageSubmit}
 					/>
@@ -420,7 +408,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						{/* Daily question shortcut */}
 						<button
 							type="button"
-							onClick={() => { setActiveQuestionIndex(questions.findIndex(question => !isQuestionAnswered(question))); setView("questions") }}
+							onClick={() => { setQuestionTab('checkin'); setActiveQuestionIndex(questions.findIndex(question => !isQuestionAnswered(question))); setView("questions") }}
 							className="app-surface group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition hover:border-violet-400"
 						>
 							<div className="absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-400 to-emerald-400" />
@@ -458,34 +446,6 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 								<IconArrowRight size={18} className="app-text-muted flex-shrink-0 transition group-hover:text-rose-400" aria-hidden="true" />
 							</div>
 						</button>
-
-						{/* Recent answers */}
-						<div>
-							<div className="flex items-center justify-between mb-3">
-								<h3 className="app-text-muted text-sm font-semibold">最近的回答</h3>
-								{answers.length > 0 && (
-									<button
-										type="button"
-										onClick={() => setView("history")}
-										className="app-accent flex items-center gap-1 text-xs font-medium hover:underline"
-									>
-										<IconEdit size={14} aria-hidden="true" />
-										管理回答
-									</button>
-								)}
-							</div>
-							{answers.length === 0 ? (
-								<p className="app-text-muted text-center py-6 text-sm">
-									還沒有回答記錄，快去回答今日一問！
-								</p>
-							) : (
-								<div className="space-y-3">
-									{answers.slice(0, 3).map((a) => (
-										<AnswerCard key={a.id ?? a.date} record={a} />
-									))}
-								</div>
-							)}
-						</div>
 
 					</main>
 				)}
@@ -527,22 +487,6 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
   );
 }
 
-function AnswerCard({ record }: { record: AnswerRecord }) {
-  return (
-    <div className="app-surface border rounded-xl p-4">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="app-accent text-xs font-semibold">{record.category}</span>
-        <span className="app-text-muted text-xs">{record.date}</span>
-      </div>
-      <p className="app-text-muted text-xs mb-1.5">{record.question}</p>
-      <p className="app-text-secondary text-sm leading-relaxed line-clamp-3">{record.answer}</p>
-      <p className="app-accent flex items-center gap-1 text-xs font-semibold mt-2">
-        +{record.gems} <IconDiamond size={14} aria-hidden="true" />
-      </p>
-    </div>
-  )
-}
-
 function GameCoins() {
   const [coins, setCoins] = useState<number>(() =>
     parseInt(localStorage.getItem('game_coins') ?? '0', 10)
@@ -556,12 +500,12 @@ function GameCoins() {
   }, [])
 
   return (
-    <div
-      className="app-surface flex h-9 items-center gap-1.5 border px-4 rounded-full text-sm font-semibold"
-      aria-label={`遊戲金幣 ${coins}`}
-    >
-      <span aria-hidden="true">🪙</span>
-      <span className="text-sm font-bold" style={{ color: '#e65100' }}>{coins}</span>
+    <div className="group relative">
+      <div className="app-surface flex h-9 items-center gap-1.5 border px-4 rounded-full text-sm font-semibold" tabIndex={0} aria-label={`遊戲金幣 ${coins}`} aria-describedby="coin-tooltip">
+        <IconCoin size={18} stroke={1.8} color="#f59e0b" aria-hidden="true" />
+        <span className="text-sm font-bold" style={{ color: '#e65100' }}>{coins}</span>
+      </div>
+      <span id="coin-tooltip" role="tooltip" className="pointer-events-none absolute left-0 top-full z-50 mt-2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">遊戲金幣</span>
     </div>
   )
 }
