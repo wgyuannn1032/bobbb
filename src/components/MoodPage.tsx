@@ -392,7 +392,9 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
                         key={r.id ?? r.date}
                         className={`${cfg.bg} border ${cfg.border} rounded-2xl p-4 flex items-start gap-3 animate-fade-in-up`}
                       >
-                        <span className="text-3xl flex-shrink-0 mt-0.5">{cfg.emoji}</span>
+                        <div className={`${cfg.color} flex-shrink-0 mt-0.5`} aria-hidden="true">
+                          {cfg.icon}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <span className={`text-sm font-semibold ${cfg.color}`}>{cfg.label}</span>
