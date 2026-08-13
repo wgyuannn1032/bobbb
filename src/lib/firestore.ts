@@ -25,6 +25,34 @@ export interface UserData {
   petColorB?:        number
   ownedCostumes?:    string[]
   equippedCostume?:  string | null
+  // 新商城系統
+  equippedPetSkin?:     string | null   // 裝備中的寵物外型 id
+  equippedBg?:          string | null   // 裝備中的背景 id
+  equippedParticle?:    string | null   // 裝備中的粒子特效 id
+  equippedDecor?:       string | null   // 裝備中的舊節日裝飾 id（已廢棄，改用頭像框）
+  equippedAvatarFrame?: string | null   // 裝備中的頭像框 id
+  coinBonus?:           number          // 金幣加值（+n/場，有效期內）
+  coinMultiplier?:      number          // 金幣加成（倍率，有效期內）
+  bonusExpiry?:         string | null   // 加值到期日 YYYY-MM-DD
+  multiplierExpiry?:    string | null   // 加成到期日 YYYY-MM-DD
+  particleExpiry?:      string | null   // 粒子特效到期日 YYYY-MM-DD
+  avatarFrameExpiry?:   string | null   // 頭像框到期日 YYYY-MM-DD
+  bgExpiry?:            string | null   // 背景到期日 YYYY-MM-DD
+  // 背包：購買後未使用 / 已使用（開始計時）的條目
+  backpack?:            BackpackEntry[]
+}
+
+/** 背包條目（購買後需手動「使用」才開始計時一天） */
+export interface BackpackEntry {
+  id:          string   // 商品 id
+  name:        string
+  category:    string   // 商品分類
+  purchasedAt: string   // YYYY-MM-DD 購買日
+  expiresAt:   string   // YYYY-MM-DD 到期日（使用後填入，未使用時為空字串）
+  price:       number
+  preview:     string   // emoji or url
+  used:        boolean  // 是否已按「使用」開始計時
+  usedAt?:     string   // YYYY-MM-DD 幾號開始使用
 }
 
 export interface CostumeItem {
@@ -34,6 +62,24 @@ export interface CostumeItem {
   price:       number
   preview:     string
   rarity:      'common' | 'rare' | 'epic' | 'legendary'
+}
+
+/** 新商城商品型別（統一介面） */
+export type ShopCategory = 'pet' | 'avatarFrame' | 'particle' | 'treasure' | 'background' | 'coinBonus' | 'coinMultiplier'
+
+export interface ShopItem {
+  id:          string
+  category:    ShopCategory
+  name:        string
+  description: string
+  price:       number
+  preview:     string        // emoji 或圖片路徑
+  isImage?:    boolean       // preview 是否為圖片路徑
+  isFree?:     boolean       // 基礎款（免費解鎖）
+  bonusValue?: number        // 用於 coinBonus 的每場加值金額
+  multiplierValue?: number   // 用於 coinMultiplier 的倍率
+  gemRewards?:  number[]     // 寶箱開出可能的寶石數量範圍
+  gemCount?:    number       // 寶箱一次開出幾種
 }
 
 export interface AnswerRecord {
@@ -53,6 +99,110 @@ export interface AnswerRecord {
 type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'questionId' | 'createdAt' | 'updatedAt'> & {
   questionId: string
   isPublic:   boolean
+}
+
+// ── 新商城 CRUD ──────────────────────────────────────────────
+
+/** 購買新商城道具（可重複購買，寫入背包，扣除金幣；購買後 used=false，需手動使用） */
+export async function purchaseShopItem(
+  db:          Firestore,
+  uid:         string,
+  item:        ShopItem,
+  currentData: UserData
+): Promise<{ newCoins: number; backpack: BackpackEntry[] }> {
+  const currentCoins = currentData.coins ?? 0
+  if (currentCoins < item.price) throw new Error('金幣不足')
+  const newCoins = currentCoins - item.price
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const entry: BackpackEntry = {
+    id:          item.id,
+    name:        item.name,
+    category:    item.category,
+    purchasedAt: todayStr,
+    expiresAt:   '',        // 未使用時為空，使用後填入隔天日期
+    price:       item.price,
+    preview:     item.preview,
+    used:        false,
+  }
+  const existing = currentData.backpack ?? []
+  const newBackpack = [...existing, entry]
+  await updateDoc(doc(db, 'users', uid), {
+    coins: newCoins,
+    backpack: newBackpack,
+  })
+  return { newCoins, backpack: newBackpack }
+}
+
+/** 使用背包條目（開始計時一天），回傳到期日與更新後背包 */
+export async function useBackpackItem(
+  db:          Firestore,
+  uid:         string,
+  entryIndex:  number,      // 背包陣列中的索引
+  currentData: UserData
+): Promise<{ backpack: BackpackEntry[]; expiresAt: string }> {
+  const backpack = [...(currentData.backpack ?? [])]
+  const entry = backpack[entryIndex]
+  if (!entry) throw new Error('找不到背包條目')
+  if (entry.used) throw new Error('此道具已在使用中')
+
+  const today = new Date()
+  const todayStr = today.toISOString().slice(0, 10)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10)
+
+  backpack[entryIndex] = { ...entry, used: true, usedAt: todayStr, expiresAt: tomorrowStr }
+  await updateDoc(doc(db, 'users', uid), { backpack })
+  return { backpack, expiresAt: tomorrowStr }
+}
+
+/** 購買進階寵物外型（只能買一次，無過期） */
+export async function purchasePetSkin(
+  db:          Firestore,
+  uid:         string,
+  item:        ShopItem,
+  currentData: UserData
+): Promise<{ newCoins: number; ownedCostumes: string[] }> {
+  const currentCoins = currentData.coins ?? 0
+  if (currentCoins < item.price) throw new Error('金幣不足')
+  const owned = currentData.ownedCostumes ?? []
+  if (owned.includes(item.id)) throw new Error('已擁有此造型')
+  const newCoins = currentCoins - item.price
+  const newOwned = [...owned, item.id]
+  await updateDoc(doc(db, 'users', uid), {
+    coins: newCoins,
+    ownedCostumes: newOwned,
+  })
+  return { newCoins, ownedCostumes: newOwned }
+}
+
+/** 裝備寵物外型 */
+export async function equipPetSkin(
+  db:  Firestore,
+  uid: string,
+  skinId: string | null
+): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { equippedPetSkin: skinId })
+}
+
+/** 裝備背景 */
+export async function equipBackground(
+  db:  Firestore,
+  uid: string,
+  bgId: string | null,
+  bgExpiry?: string | null
+): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { equippedBg: bgId, bgExpiry: bgExpiry ?? null })
+}
+
+/** 裝備頭像框 */
+export async function equipAvatarFrame(
+  db:  Firestore,
+  uid: string,
+  frameId: string | null,
+  frameExpiry?: string | null
+): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { equippedAvatarFrame: frameId, avatarFrameExpiry: frameExpiry ?? null })
 }
 
 export async function ensureUserDoc(
@@ -89,7 +239,20 @@ export async function ensureUserDoc(
         petColorB:        200,
         petEmotion:       null,
         ownedCostumes:    [],
-        equippedCostume:  null,
+        equippedCostume:     null,
+        equippedPetSkin:     null,
+        equippedBg:          'dream_macaron',
+        equippedParticle:    null,
+        equippedDecor:       null,
+        equippedAvatarFrame: null,
+        coinBonus:           0,
+        coinMultiplier:      1,
+        bonusExpiry:         null,
+        multiplierExpiry:    null,
+        particleExpiry:      null,
+        avatarFrameExpiry:   null,
+        bgExpiry:            null,
+        backpack:            [],
         createdAt:        serverTimestamp(),
       })
   })
@@ -109,8 +272,21 @@ export async function getUserData(db: Firestore, uid: string): Promise<UserData>
     petColorG:       150,
     petColorB:       200,
     petEmotion:      null,
-    ownedCostumes:   [],
-    equippedCostume: null,
+    ownedCostumes:       [],
+    equippedCostume:     null,
+    equippedPetSkin:     null,
+    equippedBg:          'dream_macaron',
+    equippedParticle:    null,
+    equippedDecor:       null,
+    equippedAvatarFrame: null,
+    coinBonus:           0,
+    coinMultiplier:      1,
+    bonusExpiry:         null,
+    multiplierExpiry:    null,
+    particleExpiry:      null,
+    avatarFrameExpiry:   null,
+    bgExpiry:            null,
+    backpack:            [],
     ...data,
   } as UserData
 }

@@ -221,3 +221,23 @@
 .btn-grad {
   @apply w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition;
 }
+
+/* ── Avatar orbit decoration ───────────────────────────────── */
+/* emoji 繞著頭像轉一圈，半徑約 22px */
+@keyframes avatarOrbit {
+  from { transform: rotate(0deg)   translateX(22px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(22px) rotate(-360deg); }
+}
+
+.avatar-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -0.55em;   /* 垂直置中 emoji 自身 */
+  margin-left: -0.55em;  /* 水平置中 emoji 自身 */
+  pointer-events: none;
+  user-select: none;
+  animation: avatarOrbit 3s linear infinite;
+  transform-origin: center center;
+  line-height: 1;
+}

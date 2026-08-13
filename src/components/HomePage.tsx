@@ -20,6 +20,7 @@ import {
   IconMoodSmile,
   IconShoppingCart,
   IconPaw,
+  IconBackpack,
 } from '@tabler/icons-react'
 import {
   getUserData,
@@ -41,8 +42,12 @@ import BubbleGamePage from './BubbleGamePage'
 import AppNav from './AppNav'
 import MoodPage from './MoodPage'
 import ProfileModal from './ProfileModal'
-import ShopPage, { SHOP_COSTUMES } from './ShopPage'
+import ShopPage from './ShopPage'
+import BackpackPage from './BackpackPage'
 import PetPage from './PetPage'
+import FallingParticles, { getParticleEmojis } from './FallingParticles'
+import { PET_SKINS, BG_GRADIENTS, BG_DARK } from './ShopPage'
+import { AVATAR_FRAME_ITEMS } from './ShopPage'
 
 interface Props {
   user:   User
@@ -52,7 +57,7 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'mood' | 'questions' | 'bubble' | 'wish' | 'flip' | 'shop' | 'pet'
+type View = 'home' | 'mood' | 'questions' | 'bubble' | 'wish' | 'flip' | 'shop' | 'pet' | 'backpack'
 type QuestionTab = 'checkin' | 'history' | 'community'
 
 const GAMES = [
@@ -101,6 +106,12 @@ const TOOLS = [
     label: '造型商城',
     color: 'text-amber-400',
   },
+  {
+    view: 'backpack' as View,
+    icon: <IconBackpack size={20} aria-hidden="true" />,
+    label: '背包',
+    color: 'text-sky-400',
+  },
 ]
 
 export default function HomePage({ user, db, config, onSaveProfile, onLogout }: Props) {
@@ -128,6 +139,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
       flip:      '星際花園翻翻看｜DailyGem',
       shop:      '造型商城｜DailyGem',
       pet:       '我的寵物｜DailyGem',
+      backpack:  '背包｜DailyGem',
     }
     document.title = titles[view]
   }, [view])
@@ -219,6 +231,34 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
     }
   }
 
+  // ── 有效期工具 ─────────────────────────────────────────────
+  const todayStr = () => new Date().toISOString().slice(0, 10)
+  const isExpiry = (expiry: string | null | undefined) =>
+    !!expiry && expiry >= todayStr()
+
+  // 有效的金幣加值/加成（從 userData 讀，時效過期則回 0/1）
+  const activeCoinBonus      = isExpiry(userData?.bonusExpiry)      ? (userData?.coinBonus      ?? 0) : 0
+  const activeCoinMultiplier = isExpiry(userData?.multiplierExpiry) ? (userData?.coinMultiplier ?? 1) : 1
+
+  // 有效的背景 id（時效過期則回 dream_macaron）
+  const activeBgId = (() => {
+    const bg = userData?.equippedBg ?? 'dream_macaron'
+    if (bg === 'dream_macaron') return 'dream_macaron'
+    return isExpiry(userData?.bgExpiry) ? bg : 'dream_macaron'
+  })()
+
+  // 有效的頭像框
+  const activeFrameId = isExpiry(userData?.avatarFrameExpiry) ? (userData?.equippedAvatarFrame ?? null) : null
+  const activeFrame = AVATAR_FRAME_ITEMS.find(f => f.id === activeFrameId)
+
+  // 有效的粒子特效
+  const activeParticleId = isExpiry(userData?.particleExpiry) ? (userData?.equippedParticle ?? null) : null
+  const particleEmojis = getParticleEmojis(activeParticleId)
+
+  // 背景漸層
+  const bgGradient = BG_GRADIENTS[activeBgId] ?? BG_GRADIENTS['dream_macaron']
+  const bgIsDark   = BG_DARK[activeBgId] ?? false
+
   const avatarUrl =
     userData?.photoURL ?? user.photoURL ??
     `https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(user.uid)}`
@@ -233,7 +273,9 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
   }
 
   return (
-		<div className="app-page flex">
+    <div className="app-page flex" style={{ background: bgGradient, minHeight: '100vh', color: bgIsDark ? '#f1f5f9' : undefined }}>
+    {/* 飄落粒子特效（全畫面底層） */}
+    {particleEmojis.length > 0 && <FallingParticles emojis={particleEmojis} />}
 			{/* ── SIDEBAR ─────────────────────────────────── */}
 			{/* Overlay (mobile) */}
 			{sidebarOpen && (
@@ -339,32 +381,35 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 					onOpenSidebar={() => setSidebarOpen(true)}
 					onBack={view !== "home" ? () => setView("home") : undefined}
 					title={
-						view === "questions" ? "每日問答"
-						: view === "mood"      ? "情緒打卡"
-						: view === "bubble"    ? "泡泡啵啵樂"
-						: view === "wish"      ? "流星許願樹"
-						: view === "flip"      ? "星際花園"
-						: view === "shop"      ? "造型商城"
-						: view === "pet"       ? "我的寵物"
-						: undefined
-					}
-					titleIcon={
-							view === "questions" ? (
-								<IconSparkles size={18} className="app-accent" aria-hidden="true" />
-							) : view === "mood" ? (
-								<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
-							) : view === "bubble" ? (
-								<IconBubble size={18} className="text-pink-400" aria-hidden="true" />
-							) : view === "wish" ? (
-								<IconStars size={18} className="text-yellow-400" aria-hidden="true" />
-							) : view === "flip" ? (
-								<IconCards size={18} className="text-violet-400" aria-hidden="true" />
-							) : view === "shop" ? (
-								<IconShoppingCart size={18} className="text-amber-500" aria-hidden="true" />
-							) : view === "pet" ? (
-								<IconPaw size={18} className="text-emerald-500" aria-hidden="true" />
-							) : undefined
+							view === "questions" ? "每日問答"
+							: view === "mood"      ? "情緒打卡"
+							: view === "bubble"    ? "泡泡啵啵樂"
+							: view === "wish"      ? "流星許願樹"
+							: view === "flip"      ? "星際花園"
+							: view === "shop"      ? "造型商城"
+							: view === "pet"       ? "我的寵物"
+							: view === "backpack"  ? "背包"
+							: undefined
 						}
+						titleIcon={
+								view === "questions" ? (
+									<IconSparkles size={18} className="app-accent" aria-hidden="true" />
+								) : view === "mood" ? (
+									<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
+								) : view === "bubble" ? (
+									<IconBubble size={18} className="text-pink-400" aria-hidden="true" />
+								) : view === "wish" ? (
+									<IconStars size={18} className="text-yellow-400" aria-hidden="true" />
+								) : view === "flip" ? (
+									<IconCards size={18} className="text-violet-400" aria-hidden="true" />
+								) : view === "shop" ? (
+									<IconShoppingCart size={18} className="text-amber-500" aria-hidden="true" />
+								) : view === "pet" ? (
+									<IconPaw size={18} className="text-emerald-500" aria-hidden="true" />
+								) : view === "backpack" ? (
+									<IconBackpack size={18} className="text-sky-400" aria-hidden="true" />
+								) : undefined
+							}
 				>
 					<div className="flex items-center gap-3 relative">
 						{/* Game coin counter (synced with Firestore) */}
@@ -403,16 +448,34 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 								累積寶石
 							</span>
 						</div>
-						{/* Avatar */}
+						{/* Avatar (with orbiting frame decoration) */}
 						<button
 							onClick={() => setProfileOpen((o) => !o)}
-							className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0"
+							className="relative flex-shrink-0"
+							style={{ width: activeFrame ? 52 : 36, height: activeFrame ? 52 : 36 }}
 						>
+							{/* 頭像圖片 — 置中 */}
 							<img
 								src={avatarUrl}
 								alt="avatar"
-								className="w-full h-full object-cover"
+								className="rounded-full object-cover"
+								style={{
+									width: 36, height: 36,
+									position: 'absolute',
+									top: '50%', left: '50%',
+									transform: 'translate(-50%,-50%)',
+								}}
 							/>
+							{/* 環繞裝飾：CSS keyframe 讓 emoji 繞著頭像轉一圈 */}
+							{activeFrame && (
+								<span
+									className="avatar-orbit"
+									aria-hidden="true"
+									style={{ fontSize: '1.1rem' }}
+								>
+									{activeFrame.preview}
+								</span>
+							)}
 						</button>
 						{/* Profile dropdown */}
 						{profileOpen && (
@@ -470,13 +533,21 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						onSubmit={handlePageSubmit}
 					/>
 				) : view === "bubble" ? (
-					<BubbleGamePage onAwardCoins={handleAwardCoins} />
+					<BubbleGamePage onAwardCoins={handleAwardCoins} coinBonus={activeCoinBonus} coinMultiplier={activeCoinMultiplier} />
 				) : view === "wish" ? (
-						<WishGamePage onAwardCoins={handleAwardCoins} />
+						<WishGamePage onAwardCoins={handleAwardCoins} coinBonus={activeCoinBonus} coinMultiplier={activeCoinMultiplier} />
 					) : view === "flip" ? (
-						<FlipGamePage onAwardCoins={handleAwardCoins} />
+						<FlipGamePage onAwardCoins={handleAwardCoins} coinBonus={activeCoinBonus} coinMultiplier={activeCoinMultiplier} />
 					) : view === "shop" && userData ? (
 						<ShopPage
+							db={db}
+							uid={user.uid}
+							userData={userData}
+							onUserDataChanged={handleUserDataChanged}
+							onShowToast={showToast}
+						/>
+					) : view === "backpack" && userData ? (
+						<BackpackPage
 							db={db}
 							uid={user.uid}
 							userData={userData}
@@ -570,11 +641,11 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 									<div className="min-w-0 flex-1">
 										<p className="app-text flex items-center gap-1.5 text-sm font-semibold">
 											我的寵物
-											{userData.equippedCostume && (
-												<span className="text-base ml-1">
-													{SHOP_COSTUMES.find(c => c.id === userData.equippedCostume)?.preview}
-												</span>
-											)}
+											{userData.equippedPetSkin && (
+													<span className="text-base ml-1">
+														{PET_SKINS.find(c => c.id === userData.equippedPetSkin)?.preview ?? ''}
+													</span>
+												)}
 										</p>
 										<p className="app-text-muted mt-0.5 text-xs">
 											餵食寶石改變顏色
@@ -727,6 +798,6 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 				)}
 			</div>
 			{/* end main content */}
-		</div>
-  );
-}
+			  </div>
+			);
+	}

@@ -40,9 +40,11 @@ function rewardFor(score: number, completed: boolean) {
 
 interface Props {
   onAwardCoins: (amount: number) => Promise<number>
+  coinBonus?: number
+  coinMultiplier?: number
 }
 
-export default function FlipGamePage({ onAwardCoins }: Props) {
+export default function FlipGamePage({ onAwardCoins, coinBonus = 0, coinMultiplier = 1 }: Props) {
   const [difficulty, setDifficulty] = useState<Difficulty>(DIFFICULTIES[0])
   const [phase, setPhase] = useState<'choose' | 'playing' | 'result'>('choose')
   const [cards, setCards] = useState<Card[]>([])
@@ -67,7 +69,8 @@ export default function FlipGamePage({ onAwardCoins }: Props) {
   const finishGame = (completed: boolean, finalScore: number) => {
     clearPendingFlip()
     setWon(completed)
-    const earned = rewardFor(finalScore, completed)
+    const base   = rewardFor(finalScore, completed)
+    const earned = Math.round(base * coinMultiplier) + coinBonus
     setReward(earned)
     if (!rewardedRef.current && earned > 0) {
       rewardedRef.current = true

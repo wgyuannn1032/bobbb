@@ -63,9 +63,11 @@ function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, radius: 
 
 interface Props {
   onAwardCoins: (amount: number) => Promise<number>
+  coinBonus?: number
+  coinMultiplier?: number
 }
 
-export default function WishGamePage({ onAwardCoins }: Props) {
+export default function WishGamePage({ onAwardCoins, coinBonus = 0, coinMultiplier = 1 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const frameRef = useRef<number | null>(null)
   const spawnRef = useRef<number | null>(null)
@@ -179,12 +181,13 @@ export default function WishGamePage({ onAwardCoins }: Props) {
     if (finishedRef.current) return
     finishedRef.current = true
     stopGame()
-    const earned = rewardFor(scoreRef.current, false)
+    const base   = rewardFor(scoreRef.current, false)
+    const earned = Math.round(base * coinMultiplier) + coinBonus
     awardedRef.current = earned
     setReward(earned)
     void onAwardCoins(earned).catch(() => undefined)
     setPhase('result')
-  }, [onAwardCoins, stopGame])
+  }, [onAwardCoins, stopGame, coinBonus, coinMultiplier])
 
   const spawnObjects = useCallback(() => {
     const count = 1 + Math.floor(Math.random() * 2)
@@ -315,7 +318,8 @@ export default function WishGamePage({ onAwardCoins }: Props) {
 
   const toggleCheckIn = (enabled: boolean) => {
     setCheckedIn(enabled)
-    const nextReward = rewardFor(score, enabled)
+    const base = rewardFor(score, enabled)
+    const nextReward = Math.round(base * coinMultiplier) + coinBonus
     const delta = nextReward - awardedRef.current
     awardedRef.current = nextReward
     setReward(nextReward)

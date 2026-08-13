@@ -62,9 +62,11 @@ function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, radius: 
 
 interface Props {
   onAwardCoins: (amount: number) => Promise<number>
+  coinBonus?: number      // 每場加值（+n 金幣）
+  coinMultiplier?: number // 每場加成（倍率）
 }
 
-export default function BubbleGamePage({ onAwardCoins }: Props) {
+export default function BubbleGamePage({ onAwardCoins, coinBonus = 0, coinMultiplier = 1 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const frameRef = useRef<number | null>(null)
   const spawnRef = useRef<number | null>(null)
@@ -168,13 +170,14 @@ export default function BubbleGamePage({ onAwardCoins }: Props) {
     if (finishedRef.current) return
     finishedRef.current = true
     stopGame()
-    const earned = rewardFor(finalScore, false)
+    const base   = rewardFor(finalScore, false)
+    const earned = Math.round(base * coinMultiplier) + coinBonus
     awardedRef.current = earned
     setReward(earned)
     void onAwardCoins(earned).catch(() => undefined)
     setFreezeSeconds(0)
     setPhase('result')
-  }, [onAwardCoins, stopGame])
+  }, [onAwardCoins, stopGame, coinBonus, coinMultiplier])
 
   const startGame = useCallback((nextDifficulty = difficulty) => {
     stopGame()
@@ -314,7 +317,8 @@ export default function BubbleGamePage({ onAwardCoins }: Props) {
   }
 
   const toggleCheckIn = (enabled: boolean) => {
-    const nextReward = rewardFor(score, enabled)
+    const base = rewardFor(score, enabled)
+    const nextReward = Math.round(base * coinMultiplier) + coinBonus
     const delta = nextReward - awardedRef.current
     awardedRef.current = nextReward
     setCheckedIn(enabled)
