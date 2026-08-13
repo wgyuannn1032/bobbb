@@ -102,19 +102,18 @@ export default function DailyQuestionPage({ questions, initialQuestionIndex, pub
       ) : <>
       <section className="app-surface border rounded-2xl p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
+          <div className="flex-grow-0">
             <span className="app-accent inline-flex items-center gap-1 text-xs font-semibold bg-violet-500/15 px-3 py-1 rounded-full">
               <IconSparkles size={14} aria-hidden="true" />每日心情提問
             </span>
             <h2 className="app-text text-xl font-bold mt-3">用一題，好好和自己聊聊</h2>
             <p className="app-text-muted text-sm mt-1">今天已完成 {completed}/{questions.length} 題</p>
           </div>
-          <div className="app-gem-card rounded-xl px-3 py-2 text-xs font-semibold app-accent">回答可得 3–5 💎</div>
         </div>
         <div className="flex gap-2">
           {questions.map((item, index) => {
             const done = answered(item)
-            return <button key={item.id} type="button" onClick={() => selectQuestion(index)} className={`flex-1 rounded-xl border px-2 py-2 text-xs font-semibold transition ${index === questionIndex ? 'border-violet-500 bg-violet-500/10 app-accent' : 'border-[var(--app-border)] app-text-muted'} `}>
+            return <button key={item.id} type="button" onClick={() => selectQuestion(index)} className={`flex-1 rounded-xl border px-2 py-2 text-xs font-semibold items-center flex justify-center transition ${index === questionIndex ? 'border-violet-500 bg-violet-500/10 app-accent' : 'border-[var(--app-border)] app-text-muted'} `}>
               {done ? <IconCircleCheck size={15} className="inline mr-1" aria-hidden="true" /> : null}第 {index + 1} 題
             </button>
           })}

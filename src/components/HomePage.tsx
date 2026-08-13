@@ -325,7 +325,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						{/* Avatar */}
 						<button
 							onClick={() => setProfileOpen((o) => !o)}
-							className="w-9 h-9 rounded-full overflow-hidden border-2 border-violet-500 flex-shrink-0"
+							className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0"
 						>
 							<img
 								src={avatarUrl}

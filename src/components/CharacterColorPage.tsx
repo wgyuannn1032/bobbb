@@ -10,7 +10,11 @@ const CHARACTERS = [
   { id: '蝦子',  label: '蝦子' },
 ]
 
-export default function CharacterColorPage() {
+interface Props {
+  embedded?: boolean
+}
+
+export default function CharacterColorPage({ embedded = false }: Props) {
   const [color, setColor] = useState('#FFB6C1')
   const [selected, setSelected] = useState('熊')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -19,9 +23,12 @@ export default function CharacterColorPage() {
   const mask    = `/character/${selected}mask.png`
   const overlay = `/character/${selected}overlay.png`
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-50 p-6">
-      <h1 className="text-2xl font-bold text-gray-800">角色換色</h1>
+  const content = (
+    <>
+      <div className="text-center">
+        <h1 className="text-xl font-bold app-text">我的小寵物</h1>
+        <p className="app-text-muted mt-1 text-xs">選擇角色與喜歡的顏色</p>
+      </div>
 
       {/* 角色選擇 */}
       <div className="flex gap-2 flex-wrap justify-center">
@@ -29,10 +36,10 @@ export default function CharacterColorPage() {
           <button
             key={c.id}
             onClick={() => setSelected(c.id)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors
+            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors
               ${selected === c.id
                 ? 'bg-violet-500 text-white border-violet-500'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-violet-400'}`}
+                : 'app-surface app-text-secondary border hover:border-violet-400'}`}
           >
             {c.label}
           </button>
@@ -43,13 +50,13 @@ export default function CharacterColorPage() {
       <div className="flex items-center gap-3">
         <label
           htmlFor="colorPicker"
-          className="text-sm font-medium text-gray-600 cursor-pointer"
+          className="app-text-secondary text-sm font-medium cursor-pointer"
           onClick={() => inputRef.current?.click()}
         >
           幫角色換個顏色：
         </label>
         <div
-          className="w-10 h-10 rounded-full border-2 border-gray-300 cursor-pointer shadow-sm transition-transform hover:scale-110"
+          className="w-10 h-10 rounded-full border-2 border-[var(--app-border)] cursor-pointer shadow-sm transition-transform hover:scale-110"
           style={{ backgroundColor: color }}
           onClick={() => inputRef.current?.click()}
           title="點我選色"
@@ -65,22 +72,17 @@ export default function CharacterColorPage() {
       </div>
 
       {/* 角色容器 */}
-      <div style={{ position: 'relative', width: 300, height: 300 }}>
+      <div className="relative h-64 w-64 sm:h-72 sm:w-72" aria-label={`${selected}預覽`}>
         {/* 底層：灰階底圖 */}
         <img
           src={base}
           alt={`${selected}底圖`}
-          style={{
-            position: 'absolute', top: 0, left: 0,
-            width: '100%', height: '100%', objectFit: 'contain',
-          }}
+          className="absolute inset-0 h-full w-full object-contain"
         />
 
         {/* 中層：染色層 */}
         <div
           style={{
-            position: 'absolute', top: 0, left: 0,
-            width: '100%', height: '100%',
             backgroundColor: color,
             mixBlendMode: 'multiply',
             WebkitMaskImage: `url('${mask}')`,
@@ -92,18 +94,26 @@ export default function CharacterColorPage() {
             WebkitMaskPosition: 'center',
             maskPosition: 'center',
           } as React.CSSProperties}
+          className="absolute inset-0 h-full w-full"
         />
 
         {/* 頂層：不被染色的部分 */}
         <img
           src={overlay}
           alt={`${selected}頂層`}
-          style={{
-            position: 'absolute', top: 0, left: 0,
-            width: '100%', height: '100%', objectFit: 'contain',
-          }}
+          className="absolute inset-0 h-full w-full object-contain"
         />
       </div>
+    </>
+  )
+
+  if (embedded) {
+    return <section className="app-surface flex h-full flex-col items-center justify-center gap-5 rounded-2xl border p-5 shadow-sm">{content}</section>
+  }
+
+  return (
+    <div className="app-page flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+      {content}
     </div>
   )
 }

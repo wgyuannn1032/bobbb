@@ -467,7 +467,7 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
       <main className="flex-1 max-w-xl mx-auto w-full px-4 py-6 space-y-5">
 
         {/* Tab bar */}
-        <div className="flex bg-[var(--app-surface-muted)] border rounded-xl p-1 gap-1">
+        <div className="app-surface border rounded-xl p-1 flex gap-1">
           {([
             { key: 'checkin',  label: '今日打卡' },
             { key: 'history',  label: '歷史記錄' },
@@ -479,7 +479,7 @@ export default function MoodPage({ uid, db, onBack, embedded = false }: Props) {
               className={`flex-1 py-2 rounded-lg text-xs font-semibold transition
                 ${tab === t.key
                   ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm'
-                  : 'app-text-muted hover:app-text'
+                  : 'app-text-muted hover:app-text app-hover'
                 }`}
             >
               {t.label}
