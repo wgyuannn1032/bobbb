@@ -34,6 +34,7 @@ import { AppConfig } from '../lib/firebase'
 import DailyQuestionPage from './DailyQuestionPage'
 import FlipGamePage from './FlipGamePage'
 import WishGamePage from './WishGamePage'
+import BubbleGamePage from './BubbleGamePage'
 import AppNav from './AppNav'
 import MoodPage from './MoodPage'
 import ProfileModal from './ProfileModal'
@@ -47,12 +48,12 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'mood' | 'questions' | 'pet' | 'wish' | 'flip'
+type View = 'home' | 'mood' | 'questions' | 'pet' | 'bubble' | 'wish' | 'flip'
 type QuestionTab = 'checkin' | 'history' | 'community'
 
 const GAMES = [
   {
-    href: '/games/bubble.html',
+    view: 'bubble' as View,
     icon: <IconBubble size={20} aria-hidden="true" />,
     label: '泡泡啵啵樂',
     color: 'text-pink-400',
@@ -113,6 +114,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
       questions: '每日問答｜DailyGem',
       mood: '情緒打卡｜DailyGem',
       pet: '我的小寵物｜DailyGem',
+      bubble: '泡泡啵啵樂｜DailyGem',
       wish: '流星許願樹｜DailyGem',
       flip: '星際花園翻翻看｜DailyGem',
     }
@@ -271,8 +273,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						紓壓小遊戲
 					</p>
 					<div className="space-y-1">
-						{GAMES.map((g) =>
-							g.view ? (
+						{GAMES.map((g) => (
 								<button
 									key={g.view}
 									type="button"
@@ -286,20 +287,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 									<span className={`${g.color} transition`}>{g.icon}</span>
 									<span>{g.label}</span>
 								</button>
-							) : (
-								<a
-									key={g.href}
-									href={g.href}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="flex items-center gap-3 px-3 py-2.5 rounded-xl app-hover app-text-secondary text-sm font-medium transition group"
-									onClick={() => setSidebarOpen(false)}
-								>
-									<span className={`${g.color} transition`}>{g.icon}</span>
-									<span>{g.label}</span>
-								</a>
-							),
-						)}
+						))}
 					</div>
 				</nav>
 
@@ -330,6 +318,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 								? "情緒打卡"
 								: view === "pet"
 									? "我的小寵物"
+								: view === "bubble"
+									? "泡泡啵啵樂"
 								: view === "wish"
 									? "流星許願樹"
 									: view === "flip"
@@ -343,6 +333,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
 						) : view === "pet" ? (
 							<IconPaw size={18} className="text-amber-400" aria-hidden="true" />
+						) : view === "bubble" ? (
+							<IconBubble size={18} className="text-pink-400" aria-hidden="true" />
 						) : view === "wish" ? (
 							<IconStars size={18} className="text-yellow-400" aria-hidden="true" />
 						) : view === "flip" ? (
@@ -441,6 +433,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 					<main className="mx-auto w-full max-w-xl px-4 py-6">
 						<CharacterColorPage embedded />
 					</main>
+				) : view === "bubble" ? (
+					<BubbleGamePage />
 				) : view === "wish" ? (
 					<WishGamePage />
 				) : view === "flip" ? (
