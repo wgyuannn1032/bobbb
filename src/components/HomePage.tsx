@@ -28,7 +28,7 @@ import {
   saveAnswer,
   rewardUser,
 } from '../lib/firestore'
-import { fetchDailyQuestion, DailyQuestion, todayKey, yesterdayKey, calcGems, fetchAIFeedback } from '../lib/gemini'
+import { fetchDailyQuestions, DailyQuestion, todayKey, yesterdayKey, fetchAIFeedback } from '../lib/gemini'
 import { AppConfig } from '../lib/firebase'
 import DailyModal from './DailyModal'
 import AppNav from './AppNav'
@@ -82,7 +82,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
   const [userData,    setUserData]    = useState<UserData | null>(null)
   const [answers,     setAnswers]     = useState<AnswerRecord[]>([])
   const [publicAnswers, setPublicAnswers] = useState<AnswerRecord[]>([])
-  const [question,    setQuestion]    = useState<DailyQuestion | null>(null)
+  const [questions,   setQuestions]   = useState<DailyQuestion[]>([])
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
   const [modalOpen,   setModalOpen]   = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
@@ -117,20 +118,30 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
     return () => { active = false }
   }, [loadData])
 
-  // Fetch today's question
+  // Fetch today's questions
   useEffect(() => {
-    fetchDailyQuestion(config.geminiApiKey).then(setQuestion)
+    fetchDailyQuestions(config.geminiApiKey).then(setQuestions)
   }, [config.geminiApiKey])
 
-  // Auto-open modal if not answered today
+  const isQuestionAnswered = useCallback((question: DailyQuestion) =>
+    answers.some(answer =>
+      answer.date === today &&
+      (answer.questionId === question.id || (!answer.questionId && answer.question === question.text))
+    ), [answers, today])
+
+  const completedQuestionCount = questions.filter(isQuestionAnswered).length
+  const allQuestionsAnswered = questions.length > 0 && completedQuestionCount === questions.length
+
+  // Auto-open the first unanswered question each day.
   useEffect(() => {
-    if (userData && question && userData.lastAnsweredDate !== today) {
-      const timer = setTimeout(() => setModalOpen(true), 800)
+    if (userData && questions.length > 0 && completedQuestionCount === 0) {
+      const timer = setTimeout(() => {
+        setActiveQuestionIndex(0)
+        setModalOpen(true)
+      }, 800)
       return () => clearTimeout(timer)
     }
-  }, [userData, question, today])
-
-  const answeredToday = userData?.lastAnsweredDate === today
+  }, [userData, questions, completedQuestionCount])
 
   const showToast = (msg: string, type = 'info') => {
     setToast({ msg, type })
@@ -138,12 +149,14 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
   }
 
   const handleSubmit = async (answer: string, gems: number, isPublic: boolean): Promise<string> => {
-    if (!userData) return ''
+    const question = questions[activeQuestionIndex]
+    if (!userData || !question || isQuestionAnswered(question)) return ''
     await saveAnswer(db, {
       uid:      user.uid,
       date:     today,
-      question: question!.text,
-      category: question!.category,
+      questionId: question.id,
+      question: question.text,
+      category: question.category,
       answer,
       gems,
       isPublic,
@@ -153,7 +166,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
     )
     let feedback = '謝謝你的真誠分享！繼續保持這份反思的習慣。'
     if (config.geminiApiKey) {
-      feedback = await fetchAIFeedback(question!.text, answer, config.geminiApiKey)
+      feedback = await fetchAIFeedback(question.text, answer, config.geminiApiKey)
     }
     setUserData(ud => ud ? { ...ud, gems: newGems, streak: newStreak, lastAnsweredDate: today } : ud)
     await loadData()
@@ -396,8 +409,8 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							</div>
 						</div>
 
-						{/* Today's question teaser / done banner */}
-						{answeredToday ? (
+						{/* Today's questions */}
+						{allQuestionsAnswered ? (
 							<div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-5 flex items-center gap-4">
 								<IconCircleCheck
 									size={34}
@@ -405,36 +418,44 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 									aria-hidden="true"
 								/>
 								<div>
-									<p className="app-success font-semibold">今日已完成！</p>
+									<p className="app-success font-semibold">今日 {questions.length} 題已完成！</p>
 									<p className="app-text-muted text-sm mt-0.5">
-										明天再來回答新問題
+										明天再來探索新的問題
 									</p>
 								</div>
 							</div>
 						) : (
-							<button
-								onClick={() => setModalOpen(true)}
-								className="app-surface w-full text-left border hover:border-violet-500 rounded-2xl p-5 transition group relative overflow-hidden"
-							>
-								<div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-400 to-emerald-400" />
-								<div className="flex items-center justify-between mb-2">
-									<span className="app-accent flex items-center gap-1 text-xs font-semibold bg-violet-500/15 px-2.5 py-1 rounded-full">
-										<IconSparkles size={14} aria-hidden="true" />
-										今日一問
-									</span>
-									<span className="app-accent flex items-center gap-1 text-xs bg-violet-500/10 font-semibold px-2.5 py-1 rounded-full">
-										+3 <IconDiamond size={14} aria-hidden="true" />
-									</span>
+							<section className="space-y-3">
+								<div className="flex items-center justify-between">
+									<h3 className="app-text text-sm font-semibold">今日問題</h3>
+									<span className="app-text-muted text-xs">已完成 {completedQuestionCount}/{questions.length || 3}</span>
 								</div>
-								<p className="app-text-secondary text-sm leading-relaxed line-clamp-2">
-									{question ? question.text : "AI 問題載入中…"}
-								</p>
-								<div className="flex justify-end mt-3">
-									<span className="app-text-muted flex items-center gap-1 group-hover:text-violet-500 transition text-sm">
-										點擊作答 <IconArrowRight size={16} aria-hidden="true" />
-									</span>
-								</div>
-							</button>
+								{questions.length === 0 ? (
+									<div className="app-surface border rounded-2xl p-5 app-text-muted text-sm">AI 問題載入中…</div>
+								) : questions.map((dailyQuestion, index) => {
+									const completed = isQuestionAnswered(dailyQuestion)
+									return (
+										<button
+											key={dailyQuestion.id}
+											type="button"
+											disabled={completed}
+											onClick={() => { setActiveQuestionIndex(index); setModalOpen(true) }}
+											className={`app-surface w-full text-left border rounded-2xl p-5 transition group relative overflow-hidden ${completed ? 'opacity-70' : 'hover:border-violet-500'}`}
+										>
+											<div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-400 to-emerald-400" />
+											<div className="flex items-center justify-between mb-2">
+												<span className="app-accent flex items-center gap-1 text-xs font-semibold bg-violet-500/15 px-2.5 py-1 rounded-full">
+													{completed ? <IconCircleCheck size={14} aria-hidden="true" /> : <IconSparkles size={14} aria-hidden="true" />}
+													問題 {index + 1} · {dailyQuestion.category}
+												</span>
+												<span className="app-accent text-xs font-semibold">{completed ? '已完成' : '+3 💎'}</span>
+											</div>
+											<p className="app-text-secondary text-sm leading-relaxed">{dailyQuestion.text}</p>
+											{!completed && <div className="app-text-muted flex justify-end items-center gap-1 mt-3 group-hover:text-violet-500 transition text-sm">點擊作答 <IconArrowRight size={16} aria-hidden="true" /></div>}
+										</button>
+									)
+								})}
+							</section>
 						)}
 
 						{/* Mood check-in shortcut */}
@@ -516,7 +537,10 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 				{/* ── MODAL ───────────────────────────────────── */}
 				{modalOpen && (
 					<DailyModal
-						question={question}
+						key={questions[activeQuestionIndex]?.id ?? 'loading'}
+						question={questions[activeQuestionIndex] ?? null}
+						questionIndex={activeQuestionIndex}
+						totalQuestions={questions.length}
 						geminiApiKey={config.geminiApiKey}
 						onSubmit={handleSubmit}
 						onClose={() => setModalOpen(false)}

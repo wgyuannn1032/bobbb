@@ -2,7 +2,7 @@
 
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, runTransaction,
-  collection, addDoc, query, where,
+  collection, query, where,
   getDocs, serverTimestamp, writeBatch, Firestore,
 } from 'firebase/firestore'
 import { User } from 'firebase/auth'
@@ -24,6 +24,7 @@ export interface AnswerRecord {
   id?:             string
   uid:             string
   date:            string
+  questionId?:     string
   question:        string
   category:        string
   answer:          string
@@ -34,8 +35,9 @@ export interface AnswerRecord {
   updatedAt?:      unknown
 }
 
-type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'author' | 'createdAt' | 'updatedAt'> & {
-  isPublic: boolean
+type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'questionId' | 'author' | 'createdAt' | 'updatedAt'> & {
+  questionId: string
+  isPublic:   boolean
 }
 
 export interface PublicUserData {
@@ -92,10 +94,14 @@ export async function saveAnswer(
   db: Firestore,
   record: NewAnswerRecord
 ): Promise<void> {
-  await addDoc(collection(db, 'answers'), {
+  await setDoc(doc(db, 'answers', answerDocumentId(record.uid, record.date, record.questionId)), {
     ...record,
     createdAt: serverTimestamp(),
   })
+}
+
+function answerDocumentId(uid: string, date: string, questionId: string): string {
+  return `${uid}_${date}_${questionId}`
 }
 
 export async function rewardUser(
@@ -107,7 +113,11 @@ export async function rewardUser(
   currentData:  UserData
 ): Promise<{ newGems: number; newStreak: number }> {
   const prevDate  = currentData.lastAnsweredDate
-  const newStreak = prevDate === yesterday ? (currentData.streak || 0) + 1 : 1
+  const newStreak = prevDate === today
+    ? (currentData.streak || 0)
+    : prevDate === yesterday
+      ? (currentData.streak || 0) + 1
+      : 1
   const newGems   = (currentData.gems || 0) + gemsEarned
 
   await updateDoc(doc(db, 'users', uid), {
