@@ -11,7 +11,6 @@ import {
   IconHistory,
   IconLogout,
   IconSparkles,
-  IconWorld,
   IconBubble,
   IconStars,
   IconCards,
@@ -32,7 +31,7 @@ import {
 } from '../lib/firestore'
 import { fetchDailyQuestions, DailyQuestion, todayKey, yesterdayKey, fetchAIFeedback } from '../lib/gemini'
 import { AppConfig } from '../lib/firebase'
-import DailyModal from './DailyModal'
+import DailyQuestionPage from './DailyQuestionPage'
 import AppNav from './AppNav'
 import HistoryPage from './HistoryPage'
 import MoodPage from './MoodPage'
@@ -46,7 +45,7 @@ interface Props {
   onLogout: () => void
 }
 
-type View = 'home' | 'history' | 'mood'
+type View = 'home' | 'history' | 'mood' | 'questions'
 
 const GAMES = [
   {
@@ -71,6 +70,12 @@ const GAMES = [
 
 const TOOLS = [
   {
+    view: 'questions' as View,
+    icon: <IconSparkles size={20} aria-hidden="true" />,
+    label: '每日問答',
+    color: 'text-violet-400',
+  },
+  {
     view: 'mood' as View,
     icon: <IconMoodSmile size={20} aria-hidden="true" />,
     label: '情緒打卡',
@@ -86,7 +91,6 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
   const [publicAnswers, setPublicAnswers] = useState<AnswerRecord[]>([])
   const [questions,   setQuestions]   = useState<DailyQuestion[]>([])
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
-  const [modalOpen,   setModalOpen]   = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [toast,       setToast]       = useState<{ msg: string; type: string } | null>(null)
@@ -132,14 +136,13 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
     ), [answers, today])
 
   const completedQuestionCount = questions.filter(isQuestionAnswered).length
-  const allQuestionsAnswered = questions.length > 0 && completedQuestionCount === questions.length
 
-  // Auto-open the first unanswered question each day.
+  // Guide users to the standalone check-in page when today's questions are ready.
   useEffect(() => {
     if (userData && questions.length > 0 && completedQuestionCount === 0) {
       const timer = setTimeout(() => {
         setActiveQuestionIndex(0)
-        setModalOpen(true)
+        setView('questions')
       }, 800)
       return () => clearTimeout(timer)
     }
@@ -150,26 +153,14 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
     setTimeout(() => setToast(null), 3000)
   }
 
-  const handleSubmit = async (answer: string, gems: number, isPublic: boolean): Promise<string> => {
-    const question = questions[activeQuestionIndex]
+  const handlePageSubmit = async (questionIndex: number, answer: string, gems: number, isPublic: boolean) => {
+    setActiveQuestionIndex(questionIndex)
+    const question = questions[questionIndex]
     if (!userData || !question || isQuestionAnswered(question)) return ''
-    await saveAnswer(db, {
-      uid:      user.uid,
-      date:     today,
-      questionId: question.id,
-      question: question.text,
-      category: question.category,
-      answer,
-      gems,
-      isPublic,
-    })
-    const { newGems, newStreak } = await rewardUser(
-      db, user.uid, gems, today, yesterdayKey(), userData
-    )
+    await saveAnswer(db, { uid: user.uid, date: today, questionId: question.id, question: question.text, category: question.category, answer, gems, isPublic })
+    const { newGems, newStreak } = await rewardUser(db, user.uid, gems, today, yesterdayKey(), userData)
     let feedback = '謝謝你的真誠分享！繼續保持這份反思的習慣。'
-    if (config.geminiApiKey) {
-      feedback = await fetchAIFeedback(question.text, answer, config.geminiApiKey)
-    }
+    if (config.geminiApiKey) feedback = await fetchAIFeedback(question.text, answer, config.geminiApiKey)
     setUserData(ud => ud ? { ...ud, gems: newGems, streak: newStreak, lastAnsweredDate: today } : ud)
     await loadData()
     showToast(`獲得 ${gems} 顆寶石！`, 'success')
@@ -377,6 +368,14 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						db={db}
 						onBack={() => setView("home")}
 					/>
+				) : view === "questions" ? (
+					<DailyQuestionPage
+						questions={questions}
+						initialQuestionIndex={activeQuestionIndex}
+						publicAnswers={publicAnswers}
+						answered={isQuestionAnswered}
+						onSubmit={handlePageSubmit}
+					/>
 				) : (
 					<main className="max-w-xl mx-auto px-4 py-6 space-y-5 w-full">
 						{/* Greeting */}
@@ -418,54 +417,27 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							</div>
 						</div>
 
-						{/* Today's questions */}
-						{allQuestionsAnswered ? (
-							<div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-5 flex items-center gap-4">
-								<IconCircleCheck
-									size={34}
-									className="app-success"
-									aria-hidden="true"
-								/>
-								<div>
-									<p className="app-success font-semibold">今日 {questions.length} 題已完成！</p>
-									<p className="app-text-muted text-sm mt-0.5">
-										明天再來探索新的問題
+						{/* Daily question shortcut */}
+						<button
+							type="button"
+							onClick={() => { setActiveQuestionIndex(questions.findIndex(question => !isQuestionAnswered(question))); setView("questions") }}
+							className="app-surface group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition hover:border-violet-400"
+						>
+							<div className="absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-400 to-emerald-400" />
+							<div className="flex items-center gap-3">
+								<span className="text-3xl" aria-hidden="true">✍️</span>
+								<div className="min-w-0 flex-1">
+									<p className="app-text flex items-center gap-1.5 text-sm font-semibold">
+										<IconSparkles size={16} className="text-violet-400" aria-hidden="true" />
+										每日問答
+									</p>
+									<p className="app-text-muted mt-0.5 text-xs">
+										{questions.length === 0 ? 'AI 正在準備今日問題…' : `今天已完成 ${completedQuestionCount}/${questions.length} 題`}
 									</p>
 								</div>
+								<IconArrowRight size={18} className="app-text-muted flex-shrink-0 transition group-hover:text-violet-400" aria-hidden="true" />
 							</div>
-						) : (
-							<section className="space-y-3">
-								<div className="flex items-center justify-between">
-									<h3 className="app-text text-sm font-semibold">今日問題</h3>
-									<span className="app-text-muted text-xs">已完成 {completedQuestionCount}/{questions.length || 3}</span>
-								</div>
-								{questions.length === 0 ? (
-									<div className="app-surface border rounded-2xl p-5 app-text-muted text-sm">AI 問題載入中…</div>
-								) : questions.map((dailyQuestion, index) => {
-									const completed = isQuestionAnswered(dailyQuestion)
-									return (
-										<button
-											key={dailyQuestion.id}
-											type="button"
-											disabled={completed}
-											onClick={() => { setActiveQuestionIndex(index); setModalOpen(true) }}
-											className={`app-surface w-full text-left border rounded-2xl p-5 transition group relative overflow-hidden ${completed ? 'opacity-70' : 'hover:border-violet-500'}`}
-										>
-											<div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-400 to-emerald-400" />
-											<div className="flex items-center justify-between mb-2">
-												<span className="app-accent flex items-center gap-1 text-xs font-semibold bg-violet-500/15 px-2.5 py-1 rounded-full">
-													{completed ? <IconCircleCheck size={14} aria-hidden="true" /> : <IconSparkles size={14} aria-hidden="true" />}
-													問題 {index + 1} · {dailyQuestion.category}
-												</span>
-												<span className="app-accent text-xs font-semibold">{completed ? '已完成' : '+3 💎'}</span>
-											</div>
-											<p className="app-text-secondary text-sm leading-relaxed">{dailyQuestion.text}</p>
-											{!completed && <div className="app-text-muted flex justify-end items-center gap-1 mt-3 group-hover:text-violet-500 transition text-sm">點擊作答 <IconArrowRight size={16} aria-hidden="true" /></div>}
-										</button>
-									)
-								})}
-							</section>
-						)}
+						</button>
 
 						{/* Mood check-in shortcut */}
 						<button
@@ -515,45 +487,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 							)}
 						</div>
 
-						{/* Community answers */}
-						<section>
-							<div className="flex items-center gap-2 mb-3">
-								<IconWorld size={18} className="app-accent" aria-hidden="true" />
-								<h3 className="app-text text-sm font-semibold">社群回答</h3>
-							</div>
-							{publicAnswers.length === 0 ? (
-								<div className="app-surface border rounded-xl px-4 py-6 text-center">
-									<IconWorld
-										size={28}
-										className="app-text-muted mx-auto mb-2"
-										aria-hidden="true"
-									/>
-									<p className="app-text-muted text-sm">
-										目前還沒有其他人的匿名回答
-									</p>
-								</div>
-							) : (
-								<div className="space-y-3">
-									{publicAnswers.map((record) => (
-										<PublicAnswerCard key={record.id} record={record} />
-									))}
-								</div>
-							)}
-						</section>
 					</main>
-				)}
-
-				{/* ── MODAL ───────────────────────────────────── */}
-				{modalOpen && (
-					<DailyModal
-						key={questions[activeQuestionIndex]?.id ?? 'loading'}
-						question={questions[activeQuestionIndex] ?? null}
-						questionIndex={activeQuestionIndex}
-						totalQuestions={questions.length}
-						geminiApiKey={config.geminiApiKey}
-						onSubmit={handleSubmit}
-						onClose={() => setModalOpen(false)}
-					/>
 				)}
 
 				{profileModalOpen && (
@@ -606,23 +540,6 @@ function AnswerCard({ record }: { record: AnswerRecord }) {
         +{record.gems} <IconDiamond size={14} aria-hidden="true" />
       </p>
     </div>
-  )
-}
-
-function PublicAnswerCard({ record }: { record: AnswerRecord }) {
-  return (
-    <article className="app-surface border rounded-xl p-4">
-      <header className="flex items-center justify-between gap-2 mb-3">
-        <p className="app-text-muted text-xs">匿名分享 · {record.date}</p>
-        <span className="app-accent ml-auto flex items-center gap-1 text-xs font-medium">
-          <IconWorld size={14} aria-hidden="true" />
-          匿名公開
-        </span>
-      </header>
-      <p className="app-accent text-xs font-semibold mb-1.5">{record.category}</p>
-      <p className="app-text-muted text-xs mb-2">{record.question}</p>
-      <p className="app-text-secondary text-sm leading-relaxed whitespace-pre-wrap">{record.answer}</p>
-    </article>
   )
 }
 
