@@ -68,17 +68,17 @@ export default function AuthPage({ onLogin, onRegister, onGoogleLogin }: Props) 
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(ellipse_at_top_left,#1e1b4b_0%,#0f0f1a_60%)] p-4">
-      <div className="bg-[#1e1e2e] border border-[#2d2d44] rounded-2xl p-8 w-full max-w-sm shadow-2xl animate-fade-in-up">
+    <div className="app-page app-auth-bg flex items-center justify-center p-4">
+      <div className="app-surface border rounded-2xl p-8 w-full max-w-sm shadow-2xl animate-fade-in-up">
 
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          <IconDiamond size={34} stroke={1.8} className="text-violet-400 animate-gem-pulse" aria-hidden="true" />
+          <IconDiamond size={34} stroke={1.8} className="app-accent animate-gem-pulse" aria-hidden="true" />
           <span className="text-2xl font-extrabold gradient-text-2">DailyGem</span>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-[#0f0f1a] rounded-xl p-1 gap-1 mb-6">
+        <div className="app-surface-muted flex rounded-xl p-1 gap-1 mb-6">
           {(['login', 'register'] as Tab[]).map(t => (
             <button
               key={t}
@@ -86,7 +86,7 @@ export default function AuthPage({ onLogin, onRegister, onGoogleLogin }: Props) 
               className={`flex-1 py-2 rounded-lg text-sm font-semibold transition
                 ${tab === t
                   ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
-                  : 'text-slate-400 hover:text-slate-200'}`}
+                  : 'app-text-muted hover:text-violet-500'}`}
             >
               {t === 'login' ? '登入' : '註冊'}
             </button>
@@ -125,16 +125,16 @@ export default function AuthPage({ onLogin, onRegister, onGoogleLogin }: Props) 
 
         {/* Divider */}
         <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 border-t border-[#2d2d44]" />
-          <span className="text-xs text-slate-600">或</span>
-          <div className="flex-1 border-t border-[#2d2d44]" />
+          <div className="flex-1 border-t border-[var(--app-border)]" />
+          <span className="app-text-muted text-xs">或</span>
+          <div className="flex-1 border-t border-[var(--app-border)]" />
         </div>
 
         {/* Google */}
         <button
           onClick={handleGoogle}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 py-2.5 border border-[#2d2d44] rounded-xl bg-[#1e1e2e] hover:bg-[#2a2a3e] text-sm text-slate-200 transition"
+          className="app-surface app-hover app-text-secondary w-full flex items-center justify-center gap-2 py-2.5 border rounded-xl text-sm transition"
         >
           <IconBrandGoogle size={19} stroke={1.8} aria-hidden="true" />
           使用 Google 帳號繼續
@@ -148,11 +148,11 @@ export default function AuthPage({ onLogin, onRegister, onGoogleLogin }: Props) 
 function Field({ label, ...rest }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-400 mb-1">{label}</label>
+      <label className="app-text-muted block text-xs font-medium mb-1">{label}</label>
       <input
         {...rest}
         required
-        className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-violet-500 transition"
+        className="app-surface-muted app-text w-full border border-[var(--app-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-violet-500 transition"
       />
     </div>
   )

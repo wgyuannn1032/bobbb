@@ -7,18 +7,31 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Answers: authenticated users can create/read their own records only
+    // Answers are private by default. Public answers are visible to signed-in users.
     match /answers/{answerId} {
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.answer is string
-        && request.resource.data.answer.size() >= 20;
+        && request.resource.data.answer.size() >= 20
+        && request.resource.data.isPublic is bool
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() <= 80;
 
       allow read: if request.auth != null
-        && resource.data.uid == request.auth.uid;
+        && (resource.data.uid == request.auth.uid
+          || resource.data.get('isPublic', false) == true);
 
-      // No updates or deletes allowed
-      allow update, delete: if false;
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.answer is string
+        && request.resource.data.answer.size() >= 20
+        && request.resource.data.isPublic is bool
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['answer', 'isPublic', 'updatedAt']);
+
+      allow delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
     }
   }
 }

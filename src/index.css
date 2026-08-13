@@ -2,20 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --app-bg: #f7f7fc;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f0f2f8;
+  --app-border: #dfe3ee;
+  --app-text: #171724;
+  --app-text-secondary: #475569;
+  --app-text-muted: #64748b;
+  --app-nav: rgb(247 247 252 / 88%);
+  --app-overlay: rgb(15 23 42 / 45%);
+  --app-hover: #e9ebf3;
+  --app-accent: #7c3aed;
+  --app-success: #047857;
+  --app-warning: #b45309;
+  --app-gem-card-from: #ede9fe;
+  --app-gem-card-to: #e0e7ff;
+  --app-gem-card-border: #c4b5fd;
+  --app-splash-from: #f5f3ff;
+  --app-splash-via: #eef2ff;
+  --app-splash-to: #ecfeff;
+  --app-auth-glow: #ede9fe;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --app-bg: #0f0f1a;
+    --app-surface: #1e1e2e;
+    --app-surface-muted: #151522;
+    --app-border: #2d2d44;
+    --app-text: #e8eaf6;
+    --app-text-secondary: #cbd5e1;
+    --app-text-muted: #94a3b8;
+    --app-nav: rgb(15 15 26 / 85%);
+    --app-overlay: rgb(0 0 0 / 70%);
+    --app-hover: #2a2a3e;
+    --app-accent: #a78bfa;
+    --app-success: #34d399;
+    --app-warning: #fbbf24;
+    --app-gem-card-from: #1e1b4b;
+    --app-gem-card-to: #312e81;
+    --app-gem-card-border: rgb(67 56 202 / 50%);
+    --app-splash-from: #1a1a2e;
+    --app-splash-via: #16213e;
+    --app-splash-to: #0f3460;
+    --app-auth-glow: #1e1b4b;
+  }
+}
+
 @layer base {
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
-    background: #0f0f1a;
-    color: #e8eaf6;
+    background: var(--app-bg);
+    color: var(--app-text);
     min-height: 100vh;
+  }
+}
+
+@layer components {
+  .app-page {
+    min-height: 100vh;
+    background: var(--app-bg);
+    color: var(--app-text);
+  }
+  .app-surface {
+    background: var(--app-surface);
+    border-color: var(--app-border);
+  }
+  .app-surface-muted { background: var(--app-surface-muted); }
+  .app-nav {
+    background: var(--app-nav);
+    border-color: var(--app-border);
+  }
+  .app-overlay { background: var(--app-overlay); }
+  .app-hover:hover { background: var(--app-hover); }
+  .app-text { color: var(--app-text); }
+  .app-text-secondary { color: var(--app-text-secondary); }
+  .app-text-muted { color: var(--app-text-muted); }
+  .app-accent { color: var(--app-accent); }
+  .app-success { color: var(--app-success); }
+  .app-warning { color: var(--app-warning); }
+  .app-splash-bg {
+    background: linear-gradient(135deg, var(--app-splash-from), var(--app-splash-via), var(--app-splash-to));
+  }
+  .app-auth-bg {
+    background: radial-gradient(ellipse at top left, var(--app-auth-glow) 0%, var(--app-bg) 60%);
+  }
+  .app-gem-card {
+    background: linear-gradient(135deg, var(--app-gem-card-from), var(--app-gem-card-to));
+    border-color: var(--app-gem-card-border);
   }
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: #0f0f1a; }
-::-webkit-scrollbar-thumb { background: #2d2d44; border-radius: 10px; }
+::-webkit-scrollbar-track { background: var(--app-bg); }
+::-webkit-scrollbar-thumb { background: var(--app-border); border-radius: 10px; }
 
 /* Animations */
 @keyframes fadeInUp {

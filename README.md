@@ -48,7 +48,7 @@ firebase login
 firebase init hosting   # 選 dist 為 public 目錄
 firebase deploy
 
-# 套用 Firestore 安全規則
+# 套用 Firestore 安全規則（專案已設定為 my-awesome-project-116fd）
 firebase deploy --only firestore:rules
 ```
 
@@ -61,6 +61,8 @@ firebase deploy --only firestore:rules
 | 💎 寶石獎勵 | 20~99字 → 3顆，100~199字 → 4顆，200字以上 → 5顆 |
 | 🔥 連續天數 | 連續每天作答累積連勤 |
 | 📜 歷史記錄 | 查看所有歷史問答 |
+| 🌐 公開分享 | 作答時選擇是否公開，並在首頁瀏覽其他人的公開回答 |
+| ✏️ 回答管理 | 編輯自己的回答、調整公開狀態或刪除內容 |
 | 🤖 AI 回饋 | Gemini 針對你的回答給予溫暖回饋 |
 | ⚙️ 設定頁面 | 首次進入自動引導設定 Firebase/Gemini |
 
@@ -85,7 +87,11 @@ answers/{auto-id}
   category:  string
   answer:    string
   gems:      number
+  isPublic:  boolean
+  authorName: string
+  authorPhotoURL: string | null
   createdAt: Timestamp
+  updatedAt: Timestamp | null
 ```
 
 ## 專案成員

@@ -1,7 +1,7 @@
 // src/lib/firestore.ts  — Firestore CRUD helpers
 
 import {
-  doc, getDoc, updateDoc, runTransaction,
+  doc, getDoc, updateDoc, deleteDoc, runTransaction,
   collection, addDoc, query, where,
   getDocs, serverTimestamp, Firestore,
 } from 'firebase/firestore'
@@ -20,14 +20,24 @@ export interface UserData {
 }
 
 export interface AnswerRecord {
-  id?:       string
-  uid:       string
-  date:      string
-  question:  string
-  category:  string
-  answer:    string
-  gems:      number
-  createdAt?: unknown
+  id?:             string
+  uid:             string
+  date:            string
+  question:        string
+  category:        string
+  answer:          string
+  gems:            number
+  isPublic?:       boolean
+  authorName?:     string
+  authorPhotoURL?: string | null
+  createdAt?:      unknown
+  updatedAt?:      unknown
+}
+
+type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'createdAt'> & {
+  isPublic:       boolean
+  authorName:     string
+  authorPhotoURL: string | null
 }
 
 export async function ensureUserDoc(
@@ -71,7 +81,7 @@ export async function getUserData(db: Firestore, uid: string): Promise<UserData>
 
 export async function saveAnswer(
   db: Firestore,
-  record: Omit<AnswerRecord, 'id' | 'createdAt'>
+  record: NewAnswerRecord
 ): Promise<void> {
   await addDoc(collection(db, 'answers'), {
     ...record,
@@ -114,6 +124,43 @@ export async function fetchAnswers(
     .map(d => ({ id: d.id, ...d.data() } as AnswerRecord))
     .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
     .slice(0, max)
+}
+
+export async function fetchPublicAnswers(
+  db: Firestore,
+  currentUid: string,
+  max: number = 12
+): Promise<AnswerRecord[]> {
+  const q = query(
+    collection(db, 'answers'),
+    where('isPublic', '==', true)
+  )
+  const snap = await getDocs(q)
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as AnswerRecord))
+    .filter(answer => answer.uid !== currentUid)
+    .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
+    .slice(0, max)
+}
+
+export async function updateAnswer(
+  db: Firestore,
+  answerId: string,
+  answer: string,
+  isPublic: boolean
+): Promise<void> {
+  await updateDoc(doc(db, 'answers', answerId), {
+    answer: answer.trim(),
+    isPublic,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function deleteAnswer(
+  db: Firestore,
+  answerId: string
+): Promise<void> {
+  await deleteDoc(doc(db, 'answers', answerId))
 }
 
 function timestampMillis(value: unknown): number {

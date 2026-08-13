@@ -51,10 +51,10 @@ export default function App() {
   // ── Splash ──────────────────────────────────────────────────
   if (stage === 'loading' || status === 'loading') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] gap-4">
-        <IconDiamond size={64} stroke={1.7} className="text-violet-400 animate-gem-pulse" aria-hidden="true" />
+      <div className="app-page app-splash-bg flex flex-col items-center justify-center gap-4">
+        <IconDiamond size={64} stroke={1.7} className="app-accent animate-gem-pulse" aria-hidden="true" />
         <h1 className="text-3xl font-extrabold gradient-text">DailyGem</h1>
-        <p className="text-slate-400 text-sm">每日一問，探索自我</p>
+        <p className="app-text-muted text-sm">每日一問，探索自我</p>
         <div className="mt-4 w-10 h-10 border-[3px] border-violet-500/20 border-t-violet-500 rounded-full animate-spin-slow" />
       </div>
     )
@@ -63,7 +63,7 @@ export default function App() {
   // ── Config setup ─────────────────────────────────────────────
   if (stage === 'needs-config') {
     return (
-      <div className="min-h-screen bg-[#0f0f1a]">
+      <div className="app-page">
         <ConfigModal onSaved={handleConfigSaved} />
       </div>
     )
