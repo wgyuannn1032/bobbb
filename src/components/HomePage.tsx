@@ -347,20 +347,20 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						: undefined
 					}
 					titleIcon={
-						view === "questions" ? (
-							<IconSparkles size={18} className="app-accent" aria-hidden="true" />
-						) : view === "mood" ? (
-							<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
-						) : view === "wish" ? (
-							<IconStars size={18} className="text-yellow-400" aria-hidden="true" />
-						) : view === "flip" ? (
-							<IconCards size={18} className="text-violet-400" aria-hidden="true" />
-						) : view === "shop" ? (
-							<IconShoppingCart size={18} className="text-amber-500" aria-hidden="true" />
-						) : view === "pet" ? (
-							<IconPaw size={18} className="text-emerald-500" aria-hidden="true" />
-						) : undefined
-					}
+							view === "questions" ? (
+								<IconSparkles size={18} className="app-accent" aria-hidden="true" />
+							) : view === "mood" ? (
+								<IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
+							) : view === "wish" ? (
+								<IconStars size={18} className="text-yellow-400" aria-hidden="true" />
+							) : view === "flip" ? (
+								<IconCards size={18} className="text-violet-400" aria-hidden="true" />
+							) : view === "shop" ? (
+								<IconShoppingCart size={18} className="text-amber-500" aria-hidden="true" />
+							) : view === "pet" ? (
+								<IconPaw size={18} className="text-emerald-500" aria-hidden="true" />
+							) : undefined
+						}
 				>
 					<div className="flex items-center gap-3 relative">
 						{/* Game coin counter (synced with Firestore) */}
@@ -466,26 +466,26 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						onSubmit={handlePageSubmit}
 					/>
 				) : view === "wish" ? (
-					<WishGamePage />
-				) : view === "flip" ? (
-					<FlipGamePage />
-				) : view === "shop" && userData ? (
-					<ShopPage
-						db={db}
-						uid={user.uid}
-						userData={userData}
-						onUserDataChanged={handleUserDataChanged}
-						onShowToast={showToast}
-					/>
-				) : view === "pet" && userData ? (
-					<PetPage
-						db={db}
-						uid={user.uid}
-						userData={userData}
-						onUserDataChanged={handleUserDataChanged}
-						onShowToast={showToast}
-					/>
-				) : (
+						<WishGamePage />
+					) : view === "flip" ? (
+						<FlipGamePage />
+					) : view === "shop" && userData ? (
+						<ShopPage
+							db={db}
+							uid={user.uid}
+							userData={userData}
+							onUserDataChanged={handleUserDataChanged}
+							onShowToast={showToast}
+						/>
+					) : view === "pet" && userData ? (
+						<PetPage
+							db={db}
+							uid={user.uid}
+							userData={userData}
+							onUserDataChanged={handleUserDataChanged}
+							onShowToast={showToast}
+						/>
+					) : (
 					<main className="max-w-xl mx-auto px-4 py-6 space-y-5 w-full">
 						{/* Greeting */}
 						<div>
