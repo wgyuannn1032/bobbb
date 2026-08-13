@@ -12,6 +12,11 @@ import {
   IconLogout,
   IconSparkles,
   IconWorld,
+  IconBubble,
+  IconStars,
+  IconCards,
+  IconMenu2,
+  IconX,
 } from '@tabler/icons-react'
 import {
   getUserData,
@@ -36,7 +41,29 @@ interface Props {
 
 type View = 'home' | 'history'
 
+const GAMES = [
+  {
+    href: '/games/bubble.html',
+    icon: <IconBubble size={20} aria-hidden="true" />,
+    label: '泡泡啵啵樂',
+    color: 'text-pink-400',
+  },
+  {
+    href: '/games/wish.html',
+    icon: <IconStars size={20} aria-hidden="true" />,
+    label: '流星許願樹',
+    color: 'text-yellow-400',
+  },
+  {
+    href: '/games/flip.html',
+    icon: <IconCards size={20} aria-hidden="true" />,
+    label: '星際花園翻翻看',
+    color: 'text-violet-400',
+  },
+]
+
 export default function HomePage({ user, db, config, onLogout }: Props) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [view,        setView]        = useState<View>('home')
   const [userData,    setUserData]    = useState<UserData | null>(null)
   const [answers,     setAnswers]     = useState<AnswerRecord[]>([])
@@ -140,14 +167,92 @@ export default function HomePage({ user, db, config, onLogout }: Props) {
   }
 
   return (
-    <div className="app-page">
+    <div className="app-page flex">
+
+      {/* ── SIDEBAR ─────────────────────────────────── */}
+      {/* Overlay (mobile) */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`
+          fixed top-0 left-0 h-full z-40 flex flex-col
+          app-surface border-r w-60
+          transition-transform duration-200
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0 lg:static lg:h-auto lg:flex lg:flex-col
+        `}
+      >
+        {/* Sidebar header */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[var(--app-border)]">
+          <span className="flex items-center gap-1.5 font-bold text-sm gradient-text-2">
+            <IconDiamond size={16} className="app-accent" aria-hidden="true" />
+            DailyGem
+          </span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden app-text-muted hover:app-text transition"
+            aria-label="關閉選單"
+          >
+            <IconX size={18} />
+          </button>
+        </div>
+
+        {/* Games section */}
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          <p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 tracking-wider">
+            🎮 紓壓小遊戲
+          </p>
+          {GAMES.map(g => (
+            <a
+              key={g.href}
+              href={g.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl app-hover app-text-secondary text-sm font-medium transition group"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <span className={`${g.color} transition`}>{g.icon}</span>
+              <span>{g.label}</span>
+            </a>
+          ))}
+        </nav>
+
+        {/* Sidebar footer */}
+        <div className="px-3 py-3 border-t border-[var(--app-border)]">
+          <button
+            onClick={() => { onLogout(); setSidebarOpen(false) }}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-xl app-hover app-text-muted text-sm transition"
+          >
+            <IconLogout size={16} aria-hidden="true" />
+            登出
+          </button>
+        </div>
+      </aside>
+
+      {/* ── MAIN CONTENT ────────────────────────────── */}
+      <div className="flex-1 min-w-0 flex flex-col">
 
       {/* ── NAV ─────────────────────────────────────── */}
-      <nav className="app-nav sticky top-0 z-40 flex items-center justify-between px-4 py-3 backdrop-blur border-b">
-        <span className="flex items-center gap-1.5 font-bold text-base gradient-text-2">
-          <IconDiamond size={20} className="app-accent" aria-hidden="true" />
-          DailyGem
-        </span>
+      <nav className="app-nav sticky top-0 z-20 flex items-center justify-between px-4 py-3 backdrop-blur border-b">
+        <div className="flex items-center gap-2">
+          {/* Hamburger (mobile only) */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden app-text-muted hover:app-text transition mr-1"
+            aria-label="開啟選單"
+          >
+            <IconMenu2 size={22} />
+          </button>
+          <span className="flex items-center gap-1.5 font-bold text-base gradient-text-2">
+            <IconDiamond size={20} className="app-accent" aria-hidden="true" />
+            DailyGem
+          </span>
+        </div>
         <div className="flex items-center gap-3 relative">
           {/* Gem counter */}
           <div className="app-surface flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-sm font-semibold">
@@ -188,7 +293,7 @@ export default function HomePage({ user, db, config, onLogout }: Props) {
       </nav>
 
       {/* ── BODY ────────────────────────────────────── */}
-      <main className="max-w-xl mx-auto px-4 py-6 space-y-5">
+      <main className="max-w-xl mx-auto px-4 py-6 space-y-5 w-full">
 
         {/* Greeting */}
         <div>
@@ -315,8 +420,10 @@ export default function HomePage({ user, db, config, onLogout }: Props) {
 
       {/* Close profile menu on outside click */}
       {profileOpen && (
-        <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
+        <div className="fixed inset-0 z-10" onClick={() => setProfileOpen(false)} />
       )}
+
+      </div>{/* end main content */}
     </div>
   )
 }

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>星際花園翻翻看</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: linear-gradient(135deg, #fce4ec 0%, #e8eaf6 50%, #e0f2f1 100%);
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 16px;
+  }
+  #coin-badge {
+    position: fixed; top: 14px; right: 16px; z-index: 999;
+    display: flex; align-items: center; gap: 6px;
+    background: #fff; border: 2px solid #ffdac1;
+    border-radius: 20px; padding: 5px 14px;
+    box-shadow: 0 2px 10px rgba(255,160,0,.18);
+    font-size: .92rem; font-weight: 700; color: #e65100;
+    user-select: none;
+  }
+  h1 { font-size: 1.4rem; font-weight: 700; color: #7c5cd8; margin-bottom: 4px; text-shadow: 0 1px 4px #c7ceea; }
+  .subtitle { font-size: .85rem; color: #b39ddb; margin-bottom: 14px; }
+  #diff-panel {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    background: #fff; border: 2px solid #c7ceea; border-radius: 18px;
+    padding: 20px 28px; margin-bottom: 24px;
+    box-shadow: 0 2px 10px #e5e7eb;
+  }
+  #diff-panel h3 { font-size: 1rem; color: #7c5cd8; font-weight: 700; }
+  .diff-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .diff-btn {
+    border: 2px solid #c7ceea; border-radius: 12px; background: #f3e8ff;
+    color: #5c4d8a; font-size: .88rem; font-weight: 600;
+    padding: 8px 18px; cursor: pointer; transition: background .15s, transform .1s;
+    line-height: 1.5;
+  }
+  .diff-btn:hover { background: #e9d8fd; transform: translateY(-2px); }
+  .diff-btn.easy   { border-color: #b5ead7; }
+  .diff-btn.medium { border-color: #ffdac1; }
+  .diff-btn.hard   { border-color: #ffb7c5; }
+  #game-wrap { display: none; flex-direction: column; align-items: center; width: 100%; }
+  #game-wrap.active { display: flex; }
+  #hud {
+    display: flex; gap: 20px; align-items: center;
+    background: #fff; border-radius: 14px; padding: 8px 22px;
+    margin-bottom: 12px; box-shadow: 0 2px 8px #e0e0e0;
+    font-size: .9rem; color: #5c4d8a;
+  }
+  #hud .val { font-weight: 700; font-size: 1.05rem; color: #7c5cd8; }
+  #btn-home {
+    background: #f3e8ff; border: none; border-radius: 10px;
+    padding: 6px 16px; cursor: pointer; color: #7c5cd8; font-size: .85rem;
+  }
+  #btn-home:hover { background: #e9d8fd; }
+  #match-board {
+    display: grid; gap: 12px; justify-content: center;
+    margin: 0 auto; perspective: 1000px; position: relative;
+  }
+  .card-item {
+    width: 70px; height: 70px; position: relative;
+    transform-style: preserve-3d; transition: transform 0.4s ease; cursor: pointer;
+  }
+  .card-item.flipped { transform: rotateY(180deg); }
+  .card-item.matched { pointer-events: none; }
+  .card-face {
+    position: absolute; inset: 0; backface-visibility: hidden;
+    border-radius: 16px; display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; box-shadow: 0 4px 10px rgba(0,0,0,.12); user-select: none;
+  }
+  .card-back { background: linear-gradient(135deg, #c7ceea 0%, #7c5cd8 100%); color: #fff; border: 2px solid #fff; }
+  .card-front { background: linear-gradient(135deg, #ffffff 0%, #fce4ec 100%); border: 2px solid #ffb7c5; transform: rotateY(180deg); }
+  .card-item.wrong .card-front { border-color: #ffb7c5; animation: wrongFlash .4s; }
+  @keyframes wrongFlash {
+    0%,100% { border-color: #ffb7c5; }
+    50%      { border-color: #e53935; box-shadow: 0 0 8px #e5393588; }
+  }
+  #result-panel {
+    display: none; flex-direction: column; align-items: center;
+    background: #fff; border-radius: 20px; padding: 32px 40px;
+    box-shadow: 0 4px 24px #c7ceea; gap: 10px; text-align: center;
+    margin-top: 16px;
+  }
+  #result-panel.active { display: flex; }
+  #result-panel h2 { font-size: 1.4rem; color: #7c5cd8; }
+  #result-panel .big { font-size: 2.8rem; font-weight: 700; color: #f9a825; }
+  #result-panel .coin-val { font-size: 2rem; font-weight: 700; color: #ff8f00; }
+  #result-panel .msg { font-size: 1rem; color: #5c4d8a; background: #f3e8ff; border-radius: 10px; padding: 10px 20px; }
+  #checkin-toggle { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: .9rem; color: #5c4d8a; cursor: pointer; }
+  #checkin-toggle input { transform: scale(1.3); accent-color: #7c5cd8; cursor: pointer; }
+  .btn-row { display: flex; gap: 12px; margin-top: 8px; }
+  .btn-action {
+    border: none; border-radius: 12px; padding: 10px 28px;
+    font-size: .95rem; font-weight: 600; cursor: pointer; transition: opacity .15s;
+  }
+  .btn-restart { background: #7c5cd8; color: #fff; }
+  .btn-home    { background: #f3e8ff; color: #7c5cd8; }
+  .btn-restart:hover, .btn-home:hover { opacity: .85; }
+  .float-text {
+    position: absolute; font-size: 1.1rem; font-weight: 700; color: #7c5cd8;
+    pointer-events: none; animation: floatUp .8s forwards; white-space: nowrap;
+  }
+  @keyframes floatUp {
+    0% { opacity:1; transform: translateY(0); }
+    100% { opacity:0; transform: translateY(-60px); }
+  }
+  footer { margin-top: 32px; font-size: .75rem; color: #b0b8c4; border-top: 1px solid #e5e7eb; padding-top: 10px; text-align: center; width: 100%; }
+</style>
+</head>
+<body>
+<div id="coin-badge">🪙 <span id="total-coins-display">0</span></div>
+<h1>🌸 星際花園翻翻看</h1>
+<p class="subtitle">翻開卡牌配對美麗花朵，動動腦活化心靈力量！</p>
+
+<div id="diff-panel">
+  <h3>🌸 選擇難度</h3>
+  <div class="diff-btns">
+    <button class="diff-btn easy"   onclick="startFlip(3,2)">簡單<br/><small>3×2 3對</small></button>
+    <button class="diff-btn medium" onclick="startFlip(4,3)">中等<br/><small>4×3 6對</small></button>
+    <button class="diff-btn hard"   onclick="startFlip(6,4)">困難<br/><small>6×4 12對</small></button>
+  </div>
+</div>
+
+<div id="game-wrap">
+  <div id="hud">
+    <button id="btn-home" onclick="goHome()">← 返回</button>
+    <span>得分 <span class="val" id="hud-score">0</span></span>
+    <span>時間 <span class="val" id="hud-time">45s</span></span>
+    <span>翻牌 <span class="val" id="hud-flips">0</span></span>
+  </div>
+  <div id="match-board"></div>
+</div>
+
+<div id="result-panel">
+  <h2 id="res-title">星際花園翻翻看 — 遊戲結束！</h2>
+  <div style="font-size:.9rem;color:#888" id="res-info"></div>
+  <div class="big" id="res-score"></div>
+  <label class="checkin-toggle" id="checkin-toggle">
+    <input type="checkbox" id="checkin-cb" /> 今日已完成情緒打卡（1.2× 金幣加成）
+  </label>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:1.4rem">🪙</span>
+    <span class="coin-val" id="res-coins">0</span>
+    <span style="color:#888;font-size:.9rem">金幣</span>
+  </div>
+  <div class="msg" id="res-msg"></div>
+  <div class="btn-row">
+    <button class="btn-action btn-restart" id="btn-restart">再玩一次</button>
+    <button class="btn-action btn-home"    onclick="goHome()">回首頁</button>
+  </div>
+</div>
+
+<footer>Made with IBM Bob</footer>
+<script>
+"use strict";
+const FLOWER_ICONS = ["🌸","🌼","🌺","🌻","💮","🏵️","🌷","🌹","🌿","🍀","🌱","🪴"];
+const GAME_DURATION = 45;
+
+let flipState = { board:[], cols:6, fCard:null, fId:null, lock:false, flips:0, score:0, okPairs:0, totalPairs:0 };
+let timerInterval = null;
+let startTime = 0;
+let totalCoins = 0;
+let currentCols = 6, currentRows = 4;
+
+function elId(id) { return document.getElementById(id); }
+function updateCoinBadge() { elId("total-coins-display").textContent = totalCoins; }
+
+function updateHUD(score) {
+  elId("hud-score").textContent = score;
+  const remaining = Math.max(0, GAME_DURATION - Math.floor((Date.now() - startTime) / 1000));
+  const timeEl = elId("hud-time");
+  timeEl.textContent = remaining + "s";
+  timeEl.style.color = remaining <= 10 ? "#e53935" : "#7c5cd8";
+}
+
+function calculateRewardCoins(score, dur, checkedIn) {
+  let base = Math.floor(score * 0.1);
+  if (dur >= 30 && base < 10) base = 10;
+  const earned = checkedIn ? Math.round(base * 1.2) : base;
+  let message;
+  if (score >= 500) message = "哇！你今天超厲害！繼續保持這份好心情";
+  else if (score >= 200) message = "太棒了！今天也辛苦囉！給自己一個大大的讚";
+  else if (score >= 100) message = "做得不錯喔！慢慢來，放鬆就是目的";
+  else message = "不管分數，今天能玩就是最棒的你";
+  return { earned, message, bonus: checkedIn };
+}
+
+function spawnFloatText(text, x, y) {
+  const el = document.createElement("div");
+  el.className = "float-text";
+  el.textContent = text;
+  el.style.left = x + "px"; el.style.top = y + "px";
+  elId("match-board").appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+function createBoard(cols, rows) {
+  const total = cols * rows;
+  const pool = [];
+  for (let i = 0; i < total/2; i++) {
+    pool.push(FLOWER_ICONS[i % FLOWER_ICONS.length]);
+    pool.push(FLOWER_ICONS[i % FLOWER_ICONS.length]);
+  }
+  for (let i = pool.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const board = []; let idx = 0;
+  for (let r = 0; r < rows; r++) {
+    const row = [];
+    for (let c = 0; c < cols; c++) {
+      row.push({ id: `t_${r}_${c}`, icon: pool[idx++], matched: false });
+    }
+    board.push(row);
+  }
+  return board;
+}
+
+function renderBoard() {
+  const boardEl = elId("match-board");
+  boardEl.style.gridTemplateColumns = `repeat(${flipState.cols}, 70px)`;
+  boardEl.innerHTML = "";
+  flipState.board.flat().forEach(tile => {
+    const card = document.createElement("div");
+    card.className = "card-item";
+    card.dataset.id = tile.id;
+    card.innerHTML = `<div class="card-face card-back">✨</div><div class="card-face card-front">${tile.icon}</div>`;
+    card.onclick = () => flipCard(card, tile.id);
+    boardEl.appendChild(card);
+  });
+}
+
+function flipCard(card, id) {
+  if (flipState.lock) return;
+  if (card.classList.contains("flipped") || card.classList.contains("matched")) return;
+  if (flipState.fCard === card) return;
+  card.classList.add("flipped");
+  if (flipState.fCard === null) { flipState.fCard = card; flipState.fId = id; return; }
+  flipState.flips++;
+  elId("hud-flips").textContent = flipState.flips;
+  const flat = flipState.board.flat();
+  const a = flat.find(t => t.id === flipState.fId);
+  const b = flat.find(t => t.id === id);
+  if (a && b && a.icon === b.icon) {
+    flipState.board = flipState.board.map(row =>
+      row.map(t => (t.id===flipState.fId||t.id===id) ? {...t, matched:true} : t)
+    );
+    flipState.score += 30; flipState.okPairs++;
+    [flipState.fCard, card].forEach(c => c.classList.add("matched"));
+    const rect = card.getBoundingClientRect();
+    const wrapRect = elId("match-board").getBoundingClientRect();
+    spawnFloatText("+30", rect.left - wrapRect.left + 20, rect.top - wrapRect.top);
+    flipState.fCard = null; flipState.fId = null;
+    updateHUD(flipState.score);
+    if (flipState.okPairs === flipState.totalPairs) setTimeout(() => showResult(flipState.score), 500);
+  } else {
+    flipState.lock = true;
+    const prev = flipState.fCard;
+    [prev, card].forEach(c => c.classList.add("wrong"));
+    setTimeout(() => {
+      [prev, card].forEach(c => c.classList.remove("flipped","wrong"));
+      flipState.fCard = null; flipState.fId = null; flipState.lock = false;
+    }, 1000);
+  }
+}
+
+function showResult(score) {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  elId("game-wrap").classList.remove("active");
+  const dur = Math.floor((Date.now() - startTime) / 1000);
+  elId("res-info").textContent = `遊玩時間：${dur} 秒`;
+  elId("res-score").textContent = score + " 分";
+  elId("checkin-cb").checked = false;
+  let lastEarned = 0;
+  function refresh() {
+    const r = calculateRewardCoins(score, dur, elId("checkin-cb").checked);
+    elId("res-coins").textContent = r.earned;
+    elId("res-msg").textContent = r.message + (r.bonus ? "（已享打卡 1.2× 加成）" : "");
+    totalCoins = Math.max(0, totalCoins - lastEarned + r.earned);
+    lastEarned = r.earned;
+    updateCoinBadge();
+  }
+  refresh();
+  elId("checkin-cb").onchange = refresh;
+  elId("result-panel").classList.add("active");
+}
+
+function startFlip(cols, rows) {
+  currentCols = cols; currentRows = rows;
+  elId("diff-panel").style.display = "none";
+  elId("result-panel").classList.remove("active");
+  elId("game-wrap").classList.add("active");
+  flipState = {
+    board: createBoard(cols, rows), cols,
+    fCard: null, fId: null, lock: false, flips: 0, score: 0,
+    okPairs: 0, totalPairs: (cols * rows) / 2,
+  };
+  startTime = Date.now();
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => updateHUD(flipState.score), 500);
+  elId("hud-flips").textContent = "0";
+  updateHUD(0);
+  renderBoard();
+  setTimeout(() => {
+    if (flipState.okPairs < flipState.totalPairs) showResult(flipState.score);
+  }, GAME_DURATION * 1000);
+}
+
+function goHome() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  elId("game-wrap").classList.remove("active");
+  elId("result-panel").classList.remove("active");
+  elId("diff-panel").style.display = "flex";
+}
+
+elId("btn-restart").onclick = () => {
+  elId("result-panel").classList.remove("active");
+  startFlip(currentCols, currentRows);
+};
+</script>
+</body>
+</html>
