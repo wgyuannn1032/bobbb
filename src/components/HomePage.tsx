@@ -16,6 +16,7 @@ import {
   IconStars,
   IconCards,
   IconMenu2,
+  IconUserEdit,
   IconX,
 } from '@tabler/icons-react'
 import {
@@ -31,11 +32,13 @@ import { fetchDailyQuestion, DailyQuestion, todayKey, yesterdayKey, calcGems, fe
 import { AppConfig } from '../lib/firebase'
 import DailyModal from './DailyModal'
 import HistoryPage from './HistoryPage'
+import ProfileModal from './ProfileModal'
 
 interface Props {
   user:   User
   db:     Firestore
   config: AppConfig
+  onSaveProfile: (displayName: string, description: string) => Promise<void>
   onLogout: () => void
 }
 
@@ -62,7 +65,7 @@ const GAMES = [
   },
 ]
 
-export default function HomePage({ user, db, config, onLogout }: Props) {
+export default function HomePage({ user, db, config, onSaveProfile, onLogout }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [view,        setView]        = useState<View>('home')
   const [userData,    setUserData]    = useState<UserData | null>(null)
@@ -71,6 +74,7 @@ export default function HomePage({ user, db, config, onLogout }: Props) {
   const [question,    setQuestion]    = useState<DailyQuestion | null>(null)
   const [modalOpen,   setModalOpen]   = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [toast,       setToast]       = useState<{ msg: string; type: string } | null>(null)
 
   const today = todayKey()
@@ -149,10 +153,17 @@ export default function HomePage({ user, db, config, onLogout }: Props) {
   }
 
   const avatarUrl =
-    user.photoURL ??
+    userData?.photoURL ?? user.photoURL ??
     `https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(user.uid)}`
 
   const displayName = userData?.displayName ?? user.displayName ?? '朋友'
+
+  const handleSaveProfile = async (name: string, description: string) => {
+    await onSaveProfile(name, description)
+    setUserData(current => current ? { ...current, displayName: name, description } : current)
+    setProfileModalOpen(false)
+    showToast('個人資料已更新', 'success')
+  }
 
   if (view === 'history') {
     return (
@@ -272,7 +283,17 @@ export default function HomePage({ user, db, config, onLogout }: Props) {
               <div className="px-3 py-2 border-b border-[var(--app-border)]">
                 <p className="app-text text-sm font-semibold truncate">{displayName}</p>
                 <p className="app-text-muted text-xs truncate">{user.email}</p>
+                {userData?.description && (
+                  <p className="app-text-muted text-xs mt-1 line-clamp-2">{userData.description}</p>
+                )}
               </div>
+              <button
+                onClick={() => { setProfileModalOpen(true); setProfileOpen(false) }}
+                className="app-hover app-text-secondary w-full flex items-center gap-2 text-left px-3 py-2 text-sm transition"
+              >
+                <IconUserEdit size={17} aria-hidden="true" />
+                編輯個人資料
+              </button>
               <button
                 onClick={() => { setView('history'); setProfileOpen(false) }}
                 className="app-hover app-text-secondary w-full flex items-center gap-2 text-left px-3 py-2 text-sm transition"
@@ -403,6 +424,16 @@ export default function HomePage({ user, db, config, onLogout }: Props) {
           geminiApiKey={config.geminiApiKey}
           onSubmit={handleSubmit}
           onClose={() => setModalOpen(false)}
+        />
+      )}
+
+      {profileModalOpen && (
+        <ProfileModal
+          displayName={displayName}
+          email={user.email ?? ''}
+          description={userData?.description ?? ''}
+          onSave={handleSaveProfile}
+          onClose={() => setProfileModalOpen(false)}
         />
       )}
 

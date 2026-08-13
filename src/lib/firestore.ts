@@ -9,6 +9,7 @@ import { User } from 'firebase/auth'
 
 export interface UserData {
   displayName:      string
+  description?:     string
   email:            string
   gems:             number
   streak:           number
@@ -124,6 +125,17 @@ export async function fetchAnswers(
     .map(d => ({ id: d.id, ...d.data() } as AnswerRecord))
     .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
     .slice(0, max)
+}
+
+export async function updateUserData(
+  db: Firestore,
+  uid: string,
+  profile: Pick<UserData, 'displayName' | 'description'>
+): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), {
+    displayName: profile.displayName.trim(),
+    description: profile.description?.trim() ?? '',
+  })
 }
 
 export async function fetchPublicAnswers(
