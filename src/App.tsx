@@ -52,7 +52,7 @@ export default function App() {
     }
   }
 
-  const { user, status, login, register, loginGoogle, logout } = useAuth(authInst, dbInst)
+  const { user, status, login, register, loginGoogle, saveProfile, logout } = useAuth(authInst, dbInst)
 
   // ── Splash ──────────────────────────────────────────────────
   if (stage === 'loading' || status === 'loading') {
@@ -93,6 +93,7 @@ export default function App() {
         user={user}
         db={dbInst}
         config={config}
+        onSaveProfile={saveProfile}
         onLogout={logout}
       />
     )

@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { Firestore } from 'firebase/firestore'
 import {
   IconAlertTriangle,
-  IconArrowLeft,
   IconCheck,
   IconDiamond,
   IconEdit,
@@ -14,6 +13,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { fetchAnswers, AnswerRecord, updateAnswer, deleteAnswer } from '../lib/firestore'
+import AppNav from './AppNav'
 
 interface Props {
   db:     Firestore
@@ -21,9 +21,10 @@ interface Props {
   gems:   number
   onBack: () => void
   onAnswersChanged: () => Promise<void>
+  embedded?: boolean
 }
 
-export default function HistoryPage({ db, uid, gems, onBack, onAnswersChanged }: Props) {
+export default function HistoryPage({ db, uid, gems, onBack, onAnswersChanged, embedded = false }: Props) {
   const [answers, setAnswers] = useState<AnswerRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<AnswerRecord | null>(null)
@@ -68,21 +69,18 @@ export default function HistoryPage({ db, uid, gems, onBack, onAnswersChanged }:
   }
 
   return (
-    <div className="app-page">
-      <nav className="app-nav sticky top-0 z-40 flex items-center justify-between px-4 py-3 backdrop-blur border-b">
-        <button onClick={onBack} className="app-text-muted flex items-center gap-1 transition text-sm px-1 hover:text-violet-500">
-          <IconArrowLeft size={17} aria-hidden="true" />
-          返回
-        </button>
-        <span className="app-text flex items-center gap-1.5 font-semibold">
-          <IconHistory size={18} className="app-accent" aria-hidden="true" />
-          歷史記錄
-        </span>
+    <div className={embedded ? 'w-full' : 'app-page'}>
+      {!embedded && <AppNav
+        onBack={onBack}
+        backLabel="返回"
+        title="歷史記錄"
+        titleIcon={<IconHistory size={18} className="app-accent" aria-hidden="true" />}
+      >
         <div className="app-surface flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-sm font-semibold">
           <IconDiamond size={17} className="app-accent" aria-hidden="true" />
           {gems}
         </div>
-      </nav>
+      </AppNav>}
 
       <main className="max-w-xl mx-auto px-4 py-6">
         {error && (

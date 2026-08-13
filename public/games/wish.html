@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>流星許願樹</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: linear-gradient(135deg, #1a1a3e 0%, #3a2060 100%);
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 16px;
+  }
+  #coin-badge {
+    position: fixed; top: 14px; right: 16px; z-index: 999;
+    display: flex; align-items: center; gap: 6px;
+    background: #fff; border: 2px solid #ffdac1;
+    border-radius: 20px; padding: 5px 14px;
+    box-shadow: 0 2px 10px rgba(255,160,0,.18);
+    font-size: .92rem; font-weight: 700; color: #e65100;
+    user-select: none;
+  }
+  h1 { font-size: 1.4rem; font-weight: 700; color: #c7ceea; margin-bottom: 4px; text-shadow: 0 1px 6px #7c5cd8; }
+  .subtitle { font-size: .85rem; color: #9e8dc7; margin-bottom: 18px; }
+  /* ── 開始畫面 ── */
+  #start-screen {
+    display: flex; flex-direction: column; align-items: center; gap: 18px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(199,206,234,.25);
+    backdrop-filter: blur(10px);
+    border-radius: 24px; padding: 36px 40px;
+    box-shadow: 0 4px 28px rgba(0,0,0,.4); text-align: center; max-width: 360px; width: 100%;
+    margin-bottom: 24px;
+  }
+  #start-screen .game-icon { font-size: 4rem; line-height: 1; }
+  #start-screen h2 { font-size: 1.25rem; font-weight: 700; color: #c7ceea; }
+  #start-screen .rules {
+    width: 100%; background: rgba(255,255,255,0.07); border-radius: 14px; padding: 14px 16px;
+    text-align: left; display: flex; flex-direction: column; gap: 8px;
+  }
+  #start-screen .rules li {
+    font-size: .82rem; color: #b0b8e8; line-height: 1.5;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  #start-screen .rules li .dot {
+    flex-shrink: 0; width: 7px; height: 7px; border-radius: 50%;
+    background: #7c5cd8; margin-top: 5px;
+  }
+  #btn-start {
+    width: 100%; border: none; border-radius: 14px; padding: 14px;
+    background: linear-gradient(135deg, #7c5cd8, #a78bfa);
+    color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer;
+    letter-spacing: 1px; transition: opacity .15s, transform .1s;
+    box-shadow: 0 4px 18px rgba(124,92,216,.5);
+  }
+  #btn-start:hover { opacity: .9; transform: translateY(-1px); }
+  #game-wrap { display: none; flex-direction: column; align-items: center; width: 100%; }
+  #hud {
+    display: flex; gap: 20px; align-items: center;
+    background: rgba(255,255,255,0.12); border-radius: 14px; padding: 8px 22px;
+    margin-bottom: 12px; backdrop-filter: blur(6px);
+    font-size: .9rem; color: #c7ceea;
+  }
+  #hud .val { font-weight: 700; font-size: 1.05rem; color: #a78bfa; }
+  #canvas-wrap {
+    position: relative; overflow: hidden;
+    border-radius: 20px; box-shadow: 0 4px 24px #0008;
+  }
+  canvas { display: block; }
+  #pause-overlay {
+    display: none; position: absolute; inset: 0;
+    background: rgba(200,180,255,.35); border-radius: 20px;
+    align-items: center; justify-content: center;
+    font-size: 2rem; font-weight: 700; color: #5c4d8a;
+  }
+  #pause-overlay.show { display: flex; }
+  #result-panel {
+    display: none; flex-direction: column; align-items: center;
+    background: #fff; border-radius: 20px; padding: 32px 40px;
+    box-shadow: 0 4px 24px #c7ceea; gap: 10px; text-align: center;
+  }
+  #result-panel.active { display: flex; }
+  #result-panel h2 { font-size: 1.4rem; color: #7c5cd8; }
+  #result-panel .big { font-size: 2.8rem; font-weight: 700; color: #f9a825; }
+  #result-panel .coin-val { font-size: 2rem; font-weight: 700; color: #ff8f00; }
+  #result-panel .msg { font-size: 1rem; color: #5c4d8a; background: #f3e8ff; border-radius: 10px; padding: 10px 20px; }
+  #checkin-toggle { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: .9rem; color: #5c4d8a; cursor: pointer; }
+  #checkin-toggle input { transform: scale(1.3); accent-color: #7c5cd8; cursor: pointer; }
+  .btn-restart {
+    border: none; border-radius: 12px; padding: 10px 28px;
+    font-size: .95rem; font-weight: 600; cursor: pointer; transition: opacity .15s; margin-top: 4px;
+    background: #7c5cd8; color: #fff;
+  }
+  .btn-restart:hover { opacity: .85; }
+  .float-text {
+    position: absolute; font-size: 1.1rem; font-weight: 700; color: #a78bfa;
+    pointer-events: none; animation: floatUp .8s forwards; white-space: nowrap;
+  }
+  @keyframes floatUp {
+    0% { opacity:1; transform: translateY(0); }
+    100% { opacity:0; transform: translateY(-60px); }
+  }
+  .tip { font-size: .78rem; color: #9e8dc7; margin-bottom: 10px; }
+  footer { margin-top: 32px; font-size: .75rem; color: #6b7280; border-top: 1px solid #374151; padding-top: 10px; text-align: center; width: 100%; }
+</style>
+</head>
+<body>
+<div id="coin-badge">🪙 <span id="total-coins-display">0</span></div>
+<h1>🌠 流星許願樹</h1>
+<p class="subtitle">陪粉紅小兔接住幸運星，要小心躲開灰烏雲喔！</p>
+
+<!-- 開始畫面 -->
+<div id="start-screen">
+  <div class="game-icon">🌠</div>
+  <h2>流星許願樹</h2>
+  <ul class="rules">
+    <li><span class="dot"></span>流星從天而降，移動小兔接住它 <strong>+20 分</strong></li>
+    <li><span class="dot"></span>控制方式：← → 方向鍵 / A D 鍵，或直接移動滑鼠</li>
+    <li><span class="dot"></span>撞到灰烏雲會被<strong>凍結</strong>，雲越大凍越久！</li>
+    <li><span class="dot"></span>小雲凍 1 秒、中雲凍 2 秒、大雲凍 3.5 秒</li>
+    <li><span class="dot"></span>限時 <strong>45 秒</strong>，接住越多流星越好！</li>
+  </ul>
+  <button id="btn-start" onclick="beginGame()">開始遊戲 ▶</button>
+</div>
+
+<div id="game-wrap">
+  <div id="hud">
+    <span>得分 <span class="val" id="hud-score">0</span></span>
+    <span>時間 <span class="val" id="hud-time">45s</span></span>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="gameCanvas" width="480" height="560"></canvas>
+    <div id="pause-overlay">暫停中…</div>
+  </div>
+</div>
+
+<div id="result-panel">
+  <h2>流星許願樹 — 遊戲結束！</h2>
+  <div style="font-size:.9rem;color:#888" id="res-info"></div>
+  <div class="big" id="res-score"></div>
+  <label class="checkin-toggle" id="checkin-toggle">
+    <input type="checkbox" id="checkin-cb" /> 今日已完成情緒打卡（1.2× 金幣加成）
+  </label>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:1.4rem">🪙</span>
+    <span class="coin-val" id="res-coins">0</span>
+    <span style="color:#888;font-size:.9rem">金幣</span>
+  </div>
+  <div class="msg" id="res-msg"></div>
+  <button class="btn-restart" onclick="restartGame()">再玩一次</button>
+</div>
+
+<footer>Made with IBM Bob</footer>
+<script>
+"use strict";
+const CANVAS_W = 480, CANVAS_H = 560;
+const GAME_DURATION = 45;
+const PET_Y = CANVAS_H - 60;
+const PET_W = 64, PET_H = 48;
+const CLOUD_SIZES = [
+  { r: 18, pauseSec: 1.0, label: "小雲" },
+  { r: 28, pauseSec: 2.0, label: "中雲" },
+  { r: 40, pauseSec: 3.5, label: "大雲！" },
+];
+
+let wishState = { objects: [], score: 0, petX: CANVAS_W/2, isPaused: false, pauseUntil: 0 };
+let wishSpawnTimer = null;
+let rafId = null;
+let startTime = 0;
+let timerInterval = null;
+let totalCoins = 0;
+let keysDown = {};
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+function elId(id) { return document.getElementById(id); }
+function updateCoinBadge() { elId("total-coins-display").textContent = totalCoins; }
+
+function updateHUD(score) {
+  elId("hud-score").textContent = score;
+  const remaining = Math.max(0, GAME_DURATION - Math.floor((Date.now() - startTime) / 1000));
+  const timeEl = elId("hud-time");
+  timeEl.textContent = remaining + "s";
+  timeEl.style.color = remaining <= 10 ? "#e53935" : "#a78bfa";
+}
+
+function calculateRewardCoins(score, dur, checkedIn) {
+  let base = Math.floor(score * 0.1);
+  if (dur >= 30 && base < 10) base = 10;
+  const earned = checkedIn ? Math.round(base * 1.2) : base;
+  let message;
+  if (score >= 500) message = "哇！你今天超厲害！繼續保持這份好心情";
+  else if (score >= 200) message = "太棒了！今天也辛苦囉！給自己一個大大的讚";
+  else if (score >= 100) message = "做得不錯喔！慢慢來，放鬆就是目的";
+  else message = "不管分數，今天能玩就是最棒的你";
+  return { earned, message, bonus: checkedIn };
+}
+
+function spawnFloatText(text, x, y) {
+  const el = document.createElement("div");
+  el.className = "float-text";
+  el.textContent = text;
+  el.style.left = x + "px"; el.style.top = y + "px";
+  elId("canvas-wrap").appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+function checkCollision(petX, obj) {
+  const pl = petX - PET_W/2, pr = petX + PET_W/2;
+  const pt = PET_Y - PET_H/2, pb = PET_Y + PET_H/2;
+  const ol = obj.x - obj.w/2, or_ = obj.x + obj.w/2;
+  const ot = obj.y - obj.h/2, ob  = obj.y + obj.h/2;
+  return pl < or_ && pr > ol && pt < ob && pb > ot;
+}
+
+function spawnBatch(count) {
+  for (let i = 0; i < count; i++) {
+    const isObstacle = Math.random() < 0.32;
+    let w, h, cloudR = 0, pauseSec = 0, speed;
+    if (isObstacle) {
+      const sz = CLOUD_SIZES[Math.floor(Math.random() * CLOUD_SIZES.length)];
+      cloudR = sz.r; pauseSec = sz.pauseSec;
+      w = cloudR * 2.4; h = cloudR * 1.6;
+      speed = 1.5 + (1 - cloudR / 45) * 1.0 + Math.random() * 0.3;
+    } else {
+      w = 28; h = 28;
+      speed = 2.5 + Math.random() * 1.5 + (Math.random() - 0.5) * 0.5;
+    }
+    wishState.objects.push({
+      id: "o_" + Date.now() + "_" + i,
+      x: 40 + Math.random() * (CANVAS_W - 80),
+      y: -40 - i * 30,
+      w, h,
+      type: isObstacle ? "obstacle" : "meteor",
+      speed, alive: true, cloudR, pauseSec,
+    });
+  }
+}
+
+function drawCloud(x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x, y, r*0.55, 0, Math.PI*2); ctx.arc(x+r*0.6, y+r*0.2, r*0.4, 0, Math.PI*2);
+  ctx.arc(x-r*0.5, y+r*0.2, r*0.35, 0, Math.PI*2); ctx.arc(x, y+r*0.5, r*0.45, 0, Math.PI*2);
+  ctx.arc(x+r*0.55, y+r*0.5, r*0.38, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function drawWish() {
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  const bg = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+  bg.addColorStop(0, "#1a1a3e"); bg.addColorStop(1, "#3a2060");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  ctx.fillStyle = "#ffffff88";
+  for (let i = 0; i < 40; i++) {
+    ctx.beginPath();
+    ctx.arc((i*127)%CANVAS_W, (i*83)%(CANVAS_H*0.7), 1.2, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  wishState.objects.forEach(o => {
+    if (!o.alive) return;
+    if (o.type === "meteor") {
+      const tailLen = 10 + o.speed * 4;
+      const grad = ctx.createLinearGradient(o.x, o.y, o.x - tailLen*0.7, o.y - tailLen);
+      grad.addColorStop(0, "#fffde7"); grad.addColorStop(1, "transparent");
+      ctx.strokeStyle = grad; ctx.lineWidth = Math.max(2, o.speed * 0.7);
+      ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(o.x - tailLen*0.7, o.y - tailLen); ctx.stroke();
+      const r = 8 + o.speed * 0.4;
+      const ballGrad = ctx.createRadialGradient(o.x - r*0.3, o.y - r*0.3, 1, o.x, o.y, r);
+      ballGrad.addColorStop(0, "#fffde7"); ballGrad.addColorStop(1, "#ffa000");
+      ctx.fillStyle = ballGrad;
+      ctx.beginPath(); ctx.arc(o.x, o.y, r, 0, Math.PI*2); ctx.fill();
+    } else {
+      const r = o.cloudR || 20;
+      const d = Math.round(50 + (r / 40) * 60);
+      ctx.fillStyle = `rgb(${d+30},${d+10},${d})`;
+      drawCloud(o.x, o.y, r);
+      ctx.fillStyle = "#fff";
+      ctx.font = `bold ${Math.max(10, r*0.55)}px sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(`-${o.pauseSec}s`, o.x, o.y + r*0.15);
+    }
+  });
+
+  const px = wishState.petX, py = PET_Y;
+  ctx.fillStyle = "#F8E1F4";
+  ctx.beginPath(); ctx.ellipse(px, py, 26, 20, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px, py-22, 16, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#ffb7c5";
+  ctx.beginPath(); ctx.ellipse(px-10, py-38, 5, 12, -0.2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(px+10, py-38, 5, 12, 0.2, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = "#7c5cd8";
+  ctx.beginPath(); ctx.arc(px-6, py-22, 3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px+6, py-22, 3, 0, Math.PI*2); ctx.fill();
+}
+
+function showResult(score) {
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  if (wishSpawnTimer) { clearInterval(wishSpawnTimer); wishSpawnTimer = null; }
+  document.onkeydown = null; document.onkeyup = null;
+  elId("game-wrap").style.display = "none";
+  const dur = Math.floor((Date.now() - startTime) / 1000);
+  elId("res-info").textContent = `遊玩時間：${dur} 秒`;
+  elId("res-score").textContent = score + " 分";
+  elId("checkin-cb").checked = false;
+  let lastEarned = 0;
+  function refresh() {
+    const r = calculateRewardCoins(score, dur, elId("checkin-cb").checked);
+    elId("res-coins").textContent = r.earned;
+    elId("res-msg").textContent = r.message + (r.bonus ? "（已享打卡 1.2× 加成）" : "");
+    totalCoins = Math.max(0, totalCoins - lastEarned + r.earned);
+    lastEarned = r.earned;
+    updateCoinBadge();
+  }
+  refresh();
+  elId("checkin-cb").onchange = refresh;
+  elId("result-panel").classList.add("active");
+}
+
+function beginGame() {
+  elId("start-screen").style.display = "none";
+  startGame();
+}
+
+function startGame() {
+  wishState = { objects: [], score: 0, petX: CANVAS_W/2, isPaused: false, pauseUntil: 0 };
+  startTime = Date.now();
+  elId("game-wrap").style.display = "flex";
+  elId("result-panel").classList.remove("active");
+  updateHUD(0);
+
+  if (wishSpawnTimer) clearInterval(wishSpawnTimer);
+  wishSpawnTimer = setInterval(() => {
+    spawnBatch(1 + Math.floor(Math.random() * 2));
+  }, 900);
+
+  keysDown = {};
+  document.onkeydown = e => { keysDown[e.key] = true; };
+  document.onkeyup   = e => { keysDown[e.key] = false; };
+
+  canvas.onmousemove = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    wishState.petX = (e.clientX - rect.left) * (CANVAS_W / rect.width);
+  };
+  canvas.ontouchmove = (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    wishState.petX = (e.touches[0].clientX - rect.left) * (CANVAS_W / rect.width);
+  };
+
+  timerInterval = setInterval(() => updateHUD(wishState.score), 500);
+
+  function loop() {
+    if (wishState.isPaused && Date.now() >= wishState.pauseUntil) {
+      wishState.isPaused = false;
+      elId("pause-overlay").classList.remove("show");
+    }
+    if (wishState.isPaused) { updateHUD(wishState.score); drawWish(); rafId = requestAnimationFrame(loop); return; }
+
+    if (keysDown["ArrowLeft"]  || keysDown["a"] || keysDown["A"]) wishState.petX = Math.max(PET_W/2, wishState.petX - 7);
+    if (keysDown["ArrowRight"] || keysDown["d"] || keysDown["D"]) wishState.petX = Math.min(CANVAS_W - PET_W/2, wishState.petX + 7);
+
+    wishState.objects.forEach(o => { if (o.alive) o.y += o.speed; });
+    wishState.objects.forEach(o => {
+      if (!o.alive) return;
+      if (checkCollision(wishState.petX, o)) {
+        o.alive = false;
+        if (o.type === "meteor") {
+          wishState.score += 20;
+          spawnFloatText("+20", o.x, o.y - 20);
+        } else {
+          const sec = o.pauseSec || 1;
+          wishState.isPaused = true;
+          wishState.pauseUntil = Date.now() + sec * 1000;
+          const sizeLabel = CLOUD_SIZES.find(s => s.r === o.cloudR)?.label ?? "雲";
+          elId("pause-overlay").textContent = `${sizeLabel} 凍結 ${sec}s`;
+          elId("pause-overlay").classList.add("show");
+          spawnFloatText(`凍結 ${sec}s！`, o.x, o.y - 24);
+        }
+      }
+    });
+    wishState.objects = wishState.objects.filter(o => o.alive && o.y < CANVAS_H + 60);
+
+    if ((Date.now() - startTime) >= GAME_DURATION * 1000) { showResult(wishState.score); return; }
+
+    updateHUD(wishState.score);
+    drawWish();
+    rafId = requestAnimationFrame(loop);
+  }
+  rafId = requestAnimationFrame(loop);
+}
+
+function restartGame() { elId("result-panel").classList.remove("active"); startGame(); }
+// 不自動開始，等玩家點擊開始
+</script>
+</body>
+</html>

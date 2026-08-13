@@ -9,6 +9,7 @@ import { User } from 'firebase/auth'
 
 export interface UserData {
   displayName:      string
+  description?:     string
   email:            string
   gems:             number
   streak:           number
@@ -126,6 +127,17 @@ export async function fetchAnswers(
     .slice(0, max)
 }
 
+export async function updateUserData(
+  db: Firestore,
+  uid: string,
+  profile: Pick<UserData, 'displayName' | 'description'>
+): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), {
+    displayName: profile.displayName.trim(),
+    description: profile.description?.trim() ?? '',
+  })
+}
+
 export async function fetchPublicAnswers(
   db: Firestore,
   currentUid: string,
@@ -161,6 +173,58 @@ export async function deleteAnswer(
   answerId: string
 ): Promise<void> {
   await deleteDoc(doc(db, 'answers', answerId))
+}
+
+// ── Mood Check-in ──────────────────────────────────────────
+
+export type MoodLevel = 1 | 2 | 3 | 4 | 5
+
+export interface MoodRecord {
+  id?:       string
+  uid:       string
+  date:      string        // YYYY-MM-DD
+  mood:      MoodLevel
+  note:      string
+  createdAt?: unknown
+}
+
+export async function saveMoodCheckIn(
+  db:     Firestore,
+  record: Omit<MoodRecord, 'id' | 'createdAt'>
+): Promise<void> {
+  await addDoc(collection(db, 'moods'), {
+    ...record,
+    createdAt: serverTimestamp(),
+  })
+}
+
+export async function fetchMoods(
+  db:  Firestore,
+  uid: string,
+  max: number = 60
+): Promise<MoodRecord[]> {
+  const q    = query(collection(db, 'moods'), where('uid', '==', uid))
+  const snap = await getDocs(q)
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as MoodRecord))
+    .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
+    .slice(0, max)
+}
+
+export async function getTodayMood(
+  db:    Firestore,
+  uid:   string,
+  today: string
+): Promise<MoodRecord | null> {
+  const q    = query(
+    collection(db, 'moods'),
+    where('uid',  '==', uid),
+    where('date', '==', today)
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  const d = snap.docs[0]
+  return { id: d.id, ...d.data() } as MoodRecord
 }
 
 function timestampMillis(value: unknown): number {

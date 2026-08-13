@@ -12,6 +12,12 @@ import {
   IconLogout,
   IconSparkles,
   IconWorld,
+  IconBubble,
+  IconStars,
+  IconCards,
+  IconUserEdit,
+  IconX,
+  IconMoodSmile,
 } from '@tabler/icons-react'
 import {
   getUserData,
@@ -25,18 +31,53 @@ import {
 import { fetchDailyQuestion, DailyQuestion, todayKey, yesterdayKey, calcGems, fetchAIFeedback } from '../lib/gemini'
 import { AppConfig } from '../lib/firebase'
 import DailyModal from './DailyModal'
+import AppNav from './AppNav'
 import HistoryPage from './HistoryPage'
+import MoodPage from './MoodPage'
+import ProfileModal from './ProfileModal'
 
 interface Props {
   user:   User
   db:     Firestore
   config: AppConfig
+  onSaveProfile: (displayName: string, description: string) => Promise<void>
   onLogout: () => void
 }
 
-type View = 'home' | 'history'
+type View = 'home' | 'history' | 'mood'
 
-export default function HomePage({ user, db, config, onLogout }: Props) {
+const GAMES = [
+  {
+    href: '/games/bubble.html',
+    icon: <IconBubble size={20} aria-hidden="true" />,
+    label: '泡泡啵啵樂',
+    color: 'text-pink-400',
+  },
+  {
+    href: '/games/wish.html',
+    icon: <IconStars size={20} aria-hidden="true" />,
+    label: '流星許願樹',
+    color: 'text-yellow-400',
+  },
+  {
+    href: '/games/flip.html',
+    icon: <IconCards size={20} aria-hidden="true" />,
+    label: '星際花園翻翻看',
+    color: 'text-violet-400',
+  },
+]
+
+const TOOLS = [
+  {
+    view: 'mood' as View,
+    icon: <IconMoodSmile size={20} aria-hidden="true" />,
+    label: '情緒打卡',
+    color: 'text-rose-400',
+  },
+]
+
+export default function HomePage({ user, db, config, onSaveProfile, onLogout }: Props) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [view,        setView]        = useState<View>('home')
   const [userData,    setUserData]    = useState<UserData | null>(null)
   const [answers,     setAnswers]     = useState<AnswerRecord[]>([])
@@ -44,6 +85,7 @@ export default function HomePage({ user, db, config, onLogout }: Props) {
   const [question,    setQuestion]    = useState<DailyQuestion | null>(null)
   const [modalOpen,   setModalOpen]   = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [toast,       setToast]       = useState<{ msg: string; type: string } | null>(null)
 
   const today = todayKey()
@@ -122,203 +164,400 @@ export default function HomePage({ user, db, config, onLogout }: Props) {
   }
 
   const avatarUrl =
-    user.photoURL ??
+    userData?.photoURL ?? user.photoURL ??
     `https://api.dicebear.com/8.x/thumbs/svg?seed=${encodeURIComponent(user.uid)}`
 
   const displayName = userData?.displayName ?? user.displayName ?? '朋友'
 
-  if (view === 'history') {
-    return (
-      <HistoryPage
-        db={db}
-        uid={user.uid}
-        gems={userData?.gems ?? 0}
-        onBack={() => setView('home')}
-        onAnswersChanged={loadData}
-      />
-    )
+  const handleSaveProfile = async (name: string, description: string) => {
+    await onSaveProfile(name, description)
+    setUserData(current => current ? { ...current, displayName: name, description } : current)
+    setProfileModalOpen(false)
+    showToast('個人資料已更新', 'success')
   }
 
   return (
-    <div className="app-page">
+		<div className="app-page flex">
+			{/* ── SIDEBAR ─────────────────────────────────── */}
+			{/* Overlay (mobile) */}
+			{sidebarOpen && (
+				<div
+					className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+					onClick={() => setSidebarOpen(false)}
+				/>
+			)}
 
-      {/* ── NAV ─────────────────────────────────────── */}
-      <nav className="app-nav sticky top-0 z-40 flex items-center justify-between px-4 py-3 backdrop-blur border-b">
-        <span className="flex items-center gap-1.5 font-bold text-base gradient-text-2">
-          <IconDiamond size={20} className="app-accent" aria-hidden="true" />
-          DailyGem
-        </span>
-        <div className="flex items-center gap-3 relative">
-          {/* Gem counter */}
-          <div className="app-surface flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-sm font-semibold">
-            <IconDiamond size={17} className="app-accent" aria-hidden="true" />
-            <span>{userData?.gems ?? 0}</span>
-          </div>
-          {/* Avatar */}
-          <button
-            onClick={() => setProfileOpen(o => !o)}
-            className="w-9 h-9 rounded-full overflow-hidden border-2 border-violet-500 flex-shrink-0"
-          >
-            <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-          </button>
-          {/* Profile dropdown */}
-          {profileOpen && (
-            <div className="app-surface absolute top-12 right-0 border rounded-xl shadow-xl w-44 z-50 animate-fade-in-up overflow-hidden">
-              <div className="px-3 py-2 border-b border-[var(--app-border)]">
-                <p className="app-text text-sm font-semibold truncate">{displayName}</p>
-                <p className="app-text-muted text-xs truncate">{user.email}</p>
-              </div>
-              <button
-                onClick={() => { setView('history'); setProfileOpen(false) }}
-                className="app-hover app-text-secondary w-full flex items-center gap-2 text-left px-3 py-2 text-sm transition"
-              >
-                <IconHistory size={17} aria-hidden="true" />
-                歷史記錄
-              </button>
-              <button
-                onClick={() => { onLogout(); setProfileOpen(false) }}
-                className="app-hover app-text-secondary w-full flex items-center gap-2 text-left px-3 py-2 text-sm transition"
-              >
-                <IconLogout size={17} aria-hidden="true" />
-                登出
-              </button>
-            </div>
-          )}
-        </div>
-      </nav>
+			<aside
+				className={`
+          fixed top-0 left-0 h-full z-40 flex flex-col
+          app-surface border-r w-60
+          transition-transform duration-200
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0
+        `}
+			>
+				{/* Sidebar header */}
+				<div className="flex items-center justify-between px-4 py-4 border-b border-[var(--app-border)]">
+					<span className="flex items-center gap-1.5 font-bold text-sm gradient-text-2">
+						<IconDiamond size={16} className="app-accent" aria-hidden="true" />
+						DailyGem
+					</span>
+					<button
+						onClick={() => setSidebarOpen(false)}
+						className="lg:hidden app-text-muted hover:app-text transition"
+						aria-label="關閉選單"
+					>
+						<IconX size={18} />
+					</button>
+				</div>
 
-      {/* ── BODY ────────────────────────────────────── */}
-      <main className="max-w-xl mx-auto px-4 py-6 space-y-5">
+				{/* Games & Tools section */}
+				<nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 tracking-wider">
+						💛 心情工具
+					</p>
+					{TOOLS.map((t) => (
+						<button
+							key={t.view}
+							type="button"
+							className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium app-hover app-text-secondary transition"
+							onClick={() => { setView(t.view); setSidebarOpen(false) }}
+						>
+							<span className={`${t.color} transition`}>{t.icon}</span>
+							<span>{t.label}</span>
+						</button>
+					))}
+					<p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 mt-3 tracking-wider">
+						🎮 紓壓小遊戲
+					</p>
+					{GAMES.map((g) => (
+						<a
+							key={g.href}
+							href={g.href}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="flex items-center gap-3 px-3 py-2.5 rounded-xl app-hover app-text-secondary text-sm font-medium transition group"
+							onClick={() => setSidebarOpen(false)}
+						>
+							<span className={`${g.color} transition`}>{g.icon}</span>
+							<span>{g.label}</span>
+						</a>
+					))}
+				</nav>
 
-        {/* Greeting */}
-        <div>
-          <h2 className="text-xl font-bold">嗨，{displayName.split(' ')[0]}</h2>
-          <p className="app-text-muted text-sm mt-0.5">每天回答一個問題，累積更多寶石</p>
-        </div>
+				{/* Sidebar footer */}
+				<div className="px-3 py-3 border-t border-[var(--app-border)]">
+					<button
+						onClick={() => {
+							onLogout();
+							setSidebarOpen(false);
+						}}
+						className="flex items-center gap-2 w-full px-3 py-2 rounded-xl app-hover app-text-muted text-sm transition"
+					>
+						<IconLogout size={16} aria-hidden="true" />
+						登出
+					</button>
+				</div>
+			</aside>
 
-        {/* Gem card */}
-        <div className="app-gem-card rounded-2xl p-5 border flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <IconDiamond size={44} stroke={1.6} className="app-accent animate-gem-pulse" aria-hidden="true" />
-            <div>
-              <div className="app-accent text-3xl font-extrabold">{userData?.gems ?? 0}</div>
-              <div className="app-text-muted text-xs">累積寶石</div>
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="app-warning text-3xl font-extrabold">{userData?.streak ?? 0}</div>
-            <div className="app-text-muted flex items-center justify-center gap-1 text-xs">
-              連續天數 <IconFlame size={14} className="app-warning" aria-hidden="true" />
-            </div>
-          </div>
-        </div>
+			{/* ── MAIN CONTENT ────────────────────────────── */}
+			<div className="flex-1 min-w-0 flex flex-col lg:ml-60">
+				<AppNav
+					onOpenSidebar={() => setSidebarOpen(true)}
+					onBack={view !== "home" ? () => setView("home") : undefined}
+					title={view === "history" ? "歷史記錄" : view === "mood" ? "情緒打卡" : undefined}
+					titleIcon={view === "history"
+						? <IconHistory size={18} className="app-accent" aria-hidden="true" />
+						: view === "mood"
+							? <IconMoodSmile size={18} className="text-rose-400" aria-hidden="true" />
+							: undefined}
+				>
+					<div className="flex items-center gap-3 relative">
+						{/* Gem counter */}
+						<div className="app-surface flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-sm font-semibold">
+							<IconDiamond size={17} className="app-accent" aria-hidden="true" />
+							<span>{userData?.gems ?? 0}</span>
+						</div>
+						{/* Avatar */}
+						<button
+							onClick={() => setProfileOpen((o) => !o)}
+							className="w-9 h-9 rounded-full overflow-hidden border-2 border-violet-500 flex-shrink-0"
+						>
+							<img
+								src={avatarUrl}
+								alt="avatar"
+								className="w-full h-full object-cover"
+							/>
+						</button>
+						{/* Profile dropdown */}
+						{profileOpen && (
+							<div className="app-surface absolute top-12 right-0 border rounded-xl shadow-xl w-44 z-50 animate-fade-in-up overflow-hidden">
+								<div className="px-3 py-2 border-b border-[var(--app-border)]">
+									<p className="app-text text-sm font-semibold truncate">
+										{displayName}
+									</p>
+									<p className="app-text-muted text-xs truncate">{user.email}</p>
+									{userData?.description && (
+										<p className="app-text-muted text-xs mt-1 line-clamp-2">
+											{userData.description}
+										</p>
+									)}
+								</div>
+								<button
+									onClick={() => {
+										setProfileModalOpen(true);
+										setProfileOpen(false);
+									}}
+									className="app-hover app-text-secondary w-full flex items-center gap-2 text-left px-3 py-2 text-sm transition"
+								>
+									<IconUserEdit size={17} aria-hidden="true" />
+									編輯個人資料
+								</button>
+								<button
+									onClick={() => {
+										setView("history");
+										setProfileOpen(false);
+									}}
+									className="app-hover app-text-secondary w-full flex items-center gap-2 text-left px-3 py-2 text-sm transition"
+								>
+									<IconHistory size={17} aria-hidden="true" />
+									歷史記錄
+								</button>
+								<button
+									onClick={() => {
+										onLogout();
+										setProfileOpen(false);
+									}}
+									className="app-hover app-text-secondary w-full flex items-center gap-2 text-left px-3 py-2 text-sm transition"
+								>
+									<IconLogout size={17} aria-hidden="true" />
+									登出
+								</button>
+							</div>
+						)}
+					</div>
+				</AppNav>
 
-        {/* Today's question teaser / done banner */}
-        {answeredToday ? (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-5 flex items-center gap-4">
-            <IconCircleCheck size={34} className="app-success" aria-hidden="true" />
-            <div>
-              <p className="app-success font-semibold">今日已完成！</p>
-              <p className="app-text-muted text-sm mt-0.5">明天再來回答新問題</p>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setModalOpen(true)}
-            className="app-surface w-full text-left border hover:border-violet-500 rounded-2xl p-5 transition group relative overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-400 to-emerald-400" />
-            <div className="flex items-center justify-between mb-2">
-              <span className="app-accent flex items-center gap-1 text-xs font-semibold bg-violet-500/15 px-2.5 py-1 rounded-full">
-                <IconSparkles size={14} aria-hidden="true" />
-                今日一問
-              </span>
-              <span className="app-accent flex items-center gap-1 text-xs bg-violet-500/10 font-semibold px-2.5 py-1 rounded-full">
-                +3 <IconDiamond size={14} aria-hidden="true" />
-              </span>
-            </div>
-            <p className="app-text-secondary text-sm leading-relaxed line-clamp-2">
-              {question ? question.text : 'AI 問題載入中…'}
-            </p>
-            <div className="flex justify-end mt-3">
-              <span className="app-text-muted flex items-center gap-1 group-hover:text-violet-500 transition text-sm">
-                點擊作答 <IconArrowRight size={16} aria-hidden="true" />
-              </span>
-            </div>
-          </button>
-        )}
+				{/* ── BODY ────────────────────────────────────── */}
+				{view === "history" ? (
+					<HistoryPage
+						embedded
+						db={db}
+						uid={user.uid}
+						gems={userData?.gems ?? 0}
+						onBack={() => setView("home")}
+						onAnswersChanged={loadData}
+					/>
+				) : view === "mood" ? (
+					<MoodPage
+						embedded
+						uid={user.uid}
+						db={db}
+						onBack={() => setView("home")}
+					/>
+				) : (
+					<main className="max-w-xl mx-auto px-4 py-6 space-y-5 w-full">
+						{/* Greeting */}
+						<div>
+							<h2 className="text-xl font-bold">嗨，{displayName.split(" ")[0]}</h2>
+							<p className="app-text-muted text-sm mt-0.5">
+								每天回答一個問題，累積更多寶石
+							</p>
+						</div>
 
-        {/* Recent answers */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="app-text-muted text-sm font-semibold">最近的回答</h3>
-            {answers.length > 0 && (
-              <button type="button" onClick={() => setView('history')} className="app-accent flex items-center gap-1 text-xs font-medium hover:underline">
-                <IconEdit size={14} aria-hidden="true" />
-                管理回答
-              </button>
-            )}
-          </div>
-          {answers.length === 0 ? (
-            <p className="app-text-muted text-center py-6 text-sm">還沒有回答記錄，快去回答今日一問！</p>
-          ) : (
-            <div className="space-y-3">
-              {answers.slice(0, 3).map(a => (
-                <AnswerCard key={a.id ?? a.date} record={a} />
-              ))}
-            </div>
-          )}
-        </div>
+						{/* Gem card */}
+						<div className="app-gem-card rounded-2xl p-5 border flex items-center justify-between">
+							<div className="flex items-center gap-4">
+								<IconDiamond
+									size={44}
+									stroke={1.6}
+									className="app-accent animate-gem-pulse"
+									aria-hidden="true"
+								/>
+								<div>
+									<div className="app-accent text-3xl font-extrabold">
+										{userData?.gems ?? 0}
+									</div>
+									<div className="app-text-muted text-xs">累積寶石</div>
+								</div>
+							</div>
+							<div className="text-center">
+								<div className="app-warning text-3xl font-extrabold">
+									{userData?.streak ?? 0}
+								</div>
+								<div className="app-text-muted flex items-center justify-center gap-1 text-xs">
+									連續天數{" "}
+									<IconFlame
+										size={14}
+										className="app-warning"
+										aria-hidden="true"
+									/>
+								</div>
+							</div>
+						</div>
 
-        {/* Community answers */}
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <IconWorld size={18} className="app-accent" aria-hidden="true" />
-            <h3 className="app-text text-sm font-semibold">社群回答</h3>
-          </div>
-          {publicAnswers.length === 0 ? (
-            <div className="app-surface border rounded-xl px-4 py-6 text-center">
-              <IconWorld size={28} className="app-text-muted mx-auto mb-2" aria-hidden="true" />
-              <p className="app-text-muted text-sm">目前還沒有其他人的公開回答</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {publicAnswers.map(record => (
-                <PublicAnswerCard key={record.id} record={record} />
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
+						{/* Today's question teaser / done banner */}
+						{answeredToday ? (
+							<div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-5 flex items-center gap-4">
+								<IconCircleCheck
+									size={34}
+									className="app-success"
+									aria-hidden="true"
+								/>
+								<div>
+									<p className="app-success font-semibold">今日已完成！</p>
+									<p className="app-text-muted text-sm mt-0.5">
+										明天再來回答新問題
+									</p>
+								</div>
+							</div>
+						) : (
+							<button
+								onClick={() => setModalOpen(true)}
+								className="app-surface w-full text-left border hover:border-violet-500 rounded-2xl p-5 transition group relative overflow-hidden"
+							>
+								<div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-blue-400 to-emerald-400" />
+								<div className="flex items-center justify-between mb-2">
+									<span className="app-accent flex items-center gap-1 text-xs font-semibold bg-violet-500/15 px-2.5 py-1 rounded-full">
+										<IconSparkles size={14} aria-hidden="true" />
+										今日一問
+									</span>
+									<span className="app-accent flex items-center gap-1 text-xs bg-violet-500/10 font-semibold px-2.5 py-1 rounded-full">
+										+3 <IconDiamond size={14} aria-hidden="true" />
+									</span>
+								</div>
+								<p className="app-text-secondary text-sm leading-relaxed line-clamp-2">
+									{question ? question.text : "AI 問題載入中…"}
+								</p>
+								<div className="flex justify-end mt-3">
+									<span className="app-text-muted flex items-center gap-1 group-hover:text-violet-500 transition text-sm">
+										點擊作答 <IconArrowRight size={16} aria-hidden="true" />
+									</span>
+								</div>
+							</button>
+						)}
 
-      {/* ── MODAL ───────────────────────────────────── */}
-      {modalOpen && (
-        <DailyModal
-          question={question}
-          geminiApiKey={config.geminiApiKey}
-          onSubmit={handleSubmit}
-          onClose={() => setModalOpen(false)}
-        />
-      )}
+						{/* Mood check-in shortcut */}
+						<button
+							type="button"
+							onClick={() => setView("mood")}
+							className="app-surface group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition hover:border-rose-400"
+						>
+							<div className="absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-rose-400 via-pink-400 to-orange-400" />
+							<div className="flex items-center gap-3">
+								<span className="text-3xl" aria-hidden="true">😊</span>
+								<div className="min-w-0 flex-1">
+									<p className="app-text flex items-center gap-1.5 text-sm font-semibold">
+										<IconMoodSmile size={16} className="text-rose-400" aria-hidden="true" />
+										情緒打卡
+									</p>
+									<p className="app-text-muted mt-0.5 text-xs">記錄今天的心情狀態</p>
+								</div>
+								<IconArrowRight size={18} className="app-text-muted flex-shrink-0 transition group-hover:text-rose-400" aria-hidden="true" />
+							</div>
+						</button>
 
-      {/* ── TOAST ───────────────────────────────────── */}
-      {toast && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-medium shadow-xl
-          ${toast.type === 'success'
-            ? 'bg-emerald-500/15 border border-emerald-500/40 app-success'
-            : 'app-surface app-text-secondary border'
-          } animate-fade-in-up flex items-center gap-2`}>
-          {toast.type === 'success' && <IconCircleCheck size={18} aria-hidden="true" />}
-          <span>{toast.msg}</span>
-        </div>
-      )}
+						{/* Recent answers */}
+						<div>
+							<div className="flex items-center justify-between mb-3">
+								<h3 className="app-text-muted text-sm font-semibold">最近的回答</h3>
+								{answers.length > 0 && (
+									<button
+										type="button"
+										onClick={() => setView("history")}
+										className="app-accent flex items-center gap-1 text-xs font-medium hover:underline"
+									>
+										<IconEdit size={14} aria-hidden="true" />
+										管理回答
+									</button>
+								)}
+							</div>
+							{answers.length === 0 ? (
+								<p className="app-text-muted text-center py-6 text-sm">
+									還沒有回答記錄，快去回答今日一問！
+								</p>
+							) : (
+								<div className="space-y-3">
+									{answers.slice(0, 3).map((a) => (
+										<AnswerCard key={a.id ?? a.date} record={a} />
+									))}
+								</div>
+							)}
+						</div>
 
-      {/* Close profile menu on outside click */}
-      {profileOpen && (
-        <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
-      )}
-    </div>
-  )
+						{/* Community answers */}
+						<section>
+							<div className="flex items-center gap-2 mb-3">
+								<IconWorld size={18} className="app-accent" aria-hidden="true" />
+								<h3 className="app-text text-sm font-semibold">社群回答</h3>
+							</div>
+							{publicAnswers.length === 0 ? (
+								<div className="app-surface border rounded-xl px-4 py-6 text-center">
+									<IconWorld
+										size={28}
+										className="app-text-muted mx-auto mb-2"
+										aria-hidden="true"
+									/>
+									<p className="app-text-muted text-sm">
+										目前還沒有其他人的公開回答
+									</p>
+								</div>
+							) : (
+								<div className="space-y-3">
+									{publicAnswers.map((record) => (
+										<PublicAnswerCard key={record.id} record={record} />
+									))}
+								</div>
+							)}
+						</section>
+					</main>
+				)}
+
+				{/* ── MODAL ───────────────────────────────────── */}
+				{modalOpen && (
+					<DailyModal
+						question={question}
+						geminiApiKey={config.geminiApiKey}
+						onSubmit={handleSubmit}
+						onClose={() => setModalOpen(false)}
+					/>
+				)}
+
+				{profileModalOpen && (
+					<ProfileModal
+						displayName={displayName}
+						email={user.email ?? ""}
+						description={userData?.description ?? ""}
+						onSave={handleSaveProfile}
+						onClose={() => setProfileModalOpen(false)}
+					/>
+				)}
+
+				{/* ── TOAST ───────────────────────────────────── */}
+				{toast && (
+					<div
+						className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-medium shadow-xl
+          ${
+				toast.type === "success"
+					? "bg-emerald-500/15 border border-emerald-500/40 app-success"
+					: "app-surface app-text-secondary border"
+			} animate-fade-in-up flex items-center gap-2`}
+					>
+						{toast.type === "success" && (
+							<IconCircleCheck size={18} aria-hidden="true" />
+						)}
+						<span>{toast.msg}</span>
+					</div>
+				)}
+
+				{/* Close profile menu on outside click */}
+				{profileOpen && (
+					<div className="fixed inset-0 z-10" onClick={() => setProfileOpen(false)} />
+				)}
+			</div>
+			{/* end main content */}
+		</div>
+  );
 }
 
 function AnswerCard({ record }: { record: AnswerRecord }) {

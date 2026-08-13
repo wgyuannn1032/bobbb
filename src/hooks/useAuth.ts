@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth'
 import { Auth } from 'firebase/auth'
 import { Firestore } from 'firebase/firestore'
-import { ensureUserDoc } from '../lib/firestore'
+import { ensureUserDoc, updateUserData } from '../lib/firestore'
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
@@ -84,7 +84,23 @@ export function useAuth(auth: Auth | null, db: Firestore | null) {
     await signInWithPopup(auth, provider)
   }
 
+  const saveProfile = async (displayName: string, description: string) => {
+    if (!auth?.currentUser) throw new Error('使用者尚未登入')
+    const normalizedName = displayName.trim()
+    const normalizedDescription = description.trim()
+
+    await updateProfile(auth.currentUser, {
+      displayName: normalizedName,
+    })
+    if (db) {
+      await updateUserData(db, auth.currentUser.uid, {
+        displayName: normalizedName,
+        description: normalizedDescription,
+      })
+    }
+  }
+
   const logout = () => auth && signOut(auth)
 
-  return { user, status, login, register, loginGoogle, logout }
+  return { user, status, login, register, loginGoogle, saveProfile, logout }
 }
