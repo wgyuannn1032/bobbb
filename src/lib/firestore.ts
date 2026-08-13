@@ -3,7 +3,7 @@
 import {
   doc, getDoc, updateDoc, deleteDoc, runTransaction,
   collection, addDoc, query, where,
-  getDocs, serverTimestamp, Firestore,
+  getDocs, serverTimestamp, writeBatch, Firestore,
 } from 'firebase/firestore'
 import { User } from 'firebase/auth'
 
@@ -29,16 +29,18 @@ export interface AnswerRecord {
   answer:          string
   gems:            number
   isPublic?:       boolean
-  authorName?:     string
-  authorPhotoURL?: string | null
+  author?:         PublicUserData
   createdAt?:      unknown
   updatedAt?:      unknown
 }
 
-type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'createdAt'> & {
-  isPublic:       boolean
-  authorName:     string
-  authorPhotoURL: string | null
+type NewAnswerRecord = Omit<AnswerRecord, 'id' | 'author' | 'createdAt' | 'updatedAt'> & {
+  isPublic: boolean
+}
+
+export interface PublicUserData {
+  displayName: string
+  photoURL:    string | null
 }
 
 export async function ensureUserDoc(
@@ -52,6 +54,10 @@ export async function ensureUserDoc(
     providerId: user.providerData[0]?.providerId ?? null,
     lastLoginAt: serverTimestamp(),
   }
+  const publicProfile: PublicUserData = {
+    displayName: user.displayName ?? '朋友',
+    photoURL: user.photoURL ?? null,
+  }
 
   await runTransaction(db, async transaction => {
     const snap = await transaction.get(ref)
@@ -61,6 +67,7 @@ export async function ensureUserDoc(
         ...identity,
         ...(user.displayName ? { displayName: user.displayName } : {}),
       })
+      transaction.set(doc(db, 'publicProfiles', user.uid), publicProfile, { merge: true })
       return
     }
 
@@ -72,6 +79,7 @@ export async function ensureUserDoc(
       lastAnsweredDate: null,
       createdAt:        serverTimestamp(),
     })
+    transaction.set(doc(db, 'publicProfiles', user.uid), publicProfile)
   })
 }
 
@@ -132,10 +140,14 @@ export async function updateUserData(
   uid: string,
   profile: Pick<UserData, 'displayName' | 'description'>
 ): Promise<void> {
-  await updateDoc(doc(db, 'users', uid), {
-    displayName: profile.displayName.trim(),
+  const displayName = profile.displayName.trim()
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'users', uid), {
+    displayName,
     description: profile.description?.trim() ?? '',
   })
+  batch.set(doc(db, 'publicProfiles', uid), { displayName }, { merge: true })
+  await batch.commit()
 }
 
 export async function fetchPublicAnswers(
@@ -148,11 +160,29 @@ export async function fetchPublicAnswers(
     where('isPublic', '==', true)
   )
   const snap = await getDocs(q)
-  return snap.docs
+  const answers = snap.docs
     .map(d => ({ id: d.id, ...d.data() } as AnswerRecord))
     .filter(answer => answer.uid !== currentUid)
     .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt))
     .slice(0, max)
+
+  const profiles = await fetchPublicProfiles(db, answers.map(answer => answer.uid))
+  return answers.map(answer => ({ ...answer, author: profiles.get(answer.uid) }))
+}
+
+async function fetchPublicProfiles(
+  db: Firestore,
+  userIds: string[]
+): Promise<Map<string, PublicUserData>> {
+  const uniqueIds = [...new Set(userIds)]
+  const entries = await Promise.all(uniqueIds.map(async userId => {
+    const snap = await getDoc(doc(db, 'publicProfiles', userId))
+    return snap.exists()
+      ? [userId, snap.data() as PublicUserData] as const
+      : null
+  }))
+
+  return new Map(entries.filter((entry): entry is readonly [string, PublicUserData] => entry !== null))
 }
 
 export async function updateAnswer(

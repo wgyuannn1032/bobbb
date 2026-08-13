@@ -80,16 +80,18 @@ users/{uid}
   createdAt:        Timestamp
   lastLoginAt:      Timestamp
 
+publicProfiles/{uid}
+  displayName: string
+  photoURL:    string | null
+
 answers/{auto-id}
-  uid:       string
+  uid:       string   (User ID，對應 publicProfiles/{uid})
   date:      string   (YYYY-MM-DD)
   question:  string
   category:  string
   answer:    string
   gems:      number
   isPublic:  boolean
-  authorName: string
-  authorPhotoURL: string | null
   createdAt: Timestamp
   updatedAt: Timestamp | null
 ```

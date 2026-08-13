@@ -7,6 +7,21 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Public-facing profile data is kept separate so private user fields such as
+    // email and login metadata never need to be exposed to other users.
+    match /publicProfiles/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['displayName', 'photoURL'])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 80
+        && (!request.resource.data.keys().hasAny(['photoURL'])
+          || request.resource.data.photoURL == null
+          || request.resource.data.photoURL is string);
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Answers are private by default. Public answers are visible to signed-in users.
     match /answers/{answerId} {
       allow create: if request.auth != null
@@ -14,8 +29,10 @@ service cloud.firestore {
         && request.resource.data.answer is string
         && request.resource.data.answer.size() >= 20
         && request.resource.data.isPublic is bool
-        && request.resource.data.authorName is string
-        && request.resource.data.authorName.size() <= 80;
+        && request.resource.data.keys().hasOnly([
+          'uid', 'date', 'question', 'category', 'answer', 'gems',
+          'isPublic', 'createdAt'
+        ]);
 
       allow read: if request.auth != null
         && (resource.data.uid == request.auth.uid
