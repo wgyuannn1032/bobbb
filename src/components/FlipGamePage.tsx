@@ -186,8 +186,17 @@ export default function FlipGamePage() {
           </div>
           <div className="mx-auto grid max-w-md gap-2" style={{ gridTemplateColumns: `repeat(${difficulty.cols}, minmax(0, 1fr))` }} aria-label="翻牌遊戲盤">
             {cards.map(card => (
-              <button key={card.id} type="button" onClick={() => flipCard(card.id)} aria-label={card.flipped || card.matched ? card.icon : '未翻開的卡牌'} className={`aspect-square rounded-xl border text-xl sm:text-2xl shadow-sm transition-transform duration-300 ${card.flipped || card.matched ? 'rotate-y-180 border-rose-300 bg-gradient-to-br from-white to-rose-50' : 'border-violet-400 bg-gradient-to-br from-violet-500 to-indigo-600 text-white hover:scale-[1.03]'} ${card.matched ? 'ring-2 ring-emerald-400/60' : ''}`}>
-                {card.flipped || card.matched ? card.icon : '✦'}
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => flipCard(card.id)}
+                aria-label={card.flipped || card.matched ? card.icon : '未翻開的卡牌'}
+                className={`flip-game-card aspect-square rounded-xl ${card.flipped || card.matched ? 'is-flipped' : ''} ${card.matched ? 'is-matched' : ''}`}
+              >
+                <span className="flip-game-card__inner">
+                  <span className="flip-game-card__face flip-game-card__back" aria-hidden="true">✦</span>
+                  <span className="flip-game-card__face flip-game-card__front" aria-hidden="true">{card.icon}</span>
+                </span>
               </button>
             ))}
           </div>
