@@ -276,7 +276,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						{/* Game coin counter */}
 						<GameCoins />
 						{/* Gem counter */}
-						<div className="app-surface flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-sm font-semibold">
+						<div className="app-surface flex h-9 items-center gap-1.5 border px-4 rounded-full text-sm font-semibold">
 							<IconDiamond size={17} className="app-accent" aria-hidden="true" />
 							<span>{userData?.gems ?? 0}</span>
 						</div>
@@ -621,7 +621,7 @@ function GameCoins() {
 
   return (
     <div
-      className="app-surface flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-sm font-semibold"
+      className="app-surface flex h-9 items-center gap-1.5 border px-4 rounded-full text-sm font-semibold"
       aria-label={`遊戲金幣 ${coins}`}
     >
       <span aria-hidden="true">🪙</span>
