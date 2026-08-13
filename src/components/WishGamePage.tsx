@@ -39,18 +39,6 @@ const CLOUD_SIZES = [
   { radius: 40, pauseSeconds: 3.5, label: '大雲' },
 ]
 
-function readCoins() {
-  const value = Number.parseInt(localStorage.getItem('game_coins') ?? '0', 10)
-  return Number.isFinite(value) && value > 0 ? value : 0
-}
-
-function writeCoins(value: number) {
-  const coins = Math.max(0, Math.floor(value))
-  localStorage.setItem('game_coins', String(coins))
-  window.dispatchEvent(new Event('game-coins-updated'))
-  return coins
-}
-
 function rewardFor(score: number, checkedIn: boolean) {
   const base = Math.max(10, Math.floor(score * 0.1))
   return checkedIn ? Math.round(base * 1.2) : base
@@ -73,7 +61,11 @@ function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, radius: 
   ctx.fill()
 }
 
-export default function WishGamePage() {
+interface Props {
+  onAwardCoins: (amount: number) => Promise<number>
+}
+
+export default function WishGamePage({ onAwardCoins }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const frameRef = useRef<number | null>(null)
   const spawnRef = useRef<number | null>(null)
@@ -95,7 +87,6 @@ export default function WishGamePage() {
   const [seconds, setSeconds] = useState(GAME_DURATION)
   const [pauseLabel, setPauseLabel] = useState('')
   const [floatTexts, setFloatTexts] = useState<FloatText[]>([])
-  const [coins, setCoins] = useState(readCoins)
   const [reward, setReward] = useState(0)
   const [checkedIn, setCheckedIn] = useState(false)
 
@@ -191,9 +182,9 @@ export default function WishGamePage() {
     const earned = rewardFor(scoreRef.current, false)
     awardedRef.current = earned
     setReward(earned)
-    setCoins(writeCoins(readCoins() + earned))
+    void onAwardCoins(earned).catch(() => undefined)
     setPhase('result')
-  }, [stopGame])
+  }, [onAwardCoins, stopGame])
 
   const spawnObjects = useCallback(() => {
     const count = 1 + Math.floor(Math.random() * 2)
@@ -328,7 +319,7 @@ export default function WishGamePage() {
     const delta = nextReward - awardedRef.current
     awardedRef.current = nextReward
     setReward(nextReward)
-    setCoins(writeCoins(readCoins() + delta))
+    if (delta !== 0) void onAwardCoins(delta).catch(() => undefined)
   }
 
   return (

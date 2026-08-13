@@ -29,6 +29,7 @@ import {
   AnswerRecord,
   saveAnswer,
   rewardUser,
+  addCoins,
   rgbToHex,
 } from '../lib/firestore'
 import { fetchDailyQuestions, DailyQuestion, todayKey, yesterdayKey, fetchAIFeedback } from '../lib/gemini'
@@ -204,6 +205,18 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 
   const handleUserDataChanged = (updated: Partial<UserData>) => {
     setUserData(ud => ud ? { ...ud, ...updated } : ud)
+  }
+
+  const handleAwardCoins = async (amount: number) => {
+    try {
+      const newCoins = await addCoins(db, user.uid, amount)
+      setUserData(current => current ? { ...current, coins: newCoins } : current)
+      return newCoins
+    } catch (error) {
+      console.error('無法更新遊戲金幣：', error)
+      showToast('金幣更新失敗，請稍後再試', 'error')
+      throw error
+    }
   }
 
   const avatarUrl =
@@ -457,11 +470,11 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 						onSubmit={handlePageSubmit}
 					/>
 				) : view === "bubble" ? (
-					<BubbleGamePage />
+					<BubbleGamePage onAwardCoins={handleAwardCoins} />
 				) : view === "wish" ? (
-						<WishGamePage />
+						<WishGamePage onAwardCoins={handleAwardCoins} />
 					) : view === "flip" ? (
-						<FlipGamePage />
+						<FlipGamePage onAwardCoins={handleAwardCoins} />
 					) : view === "shop" && userData ? (
 						<ShopPage
 							db={db}
@@ -716,31 +729,4 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 			{/* end main content */}
 		</div>
   );
-}
-
-// GameCoins component removed — coins are now read from Firestore via userData
-function _GameCoins_UNUSED() {
-  const [coins, setCoins] = useState<number>(() =>
-    parseInt(localStorage.getItem('game_coins') ?? '0', 10)
-  )
-
-  useEffect(() => {
-    const sync = () => setCoins(parseInt(localStorage.getItem('game_coins') ?? '0', 10))
-    window.addEventListener('focus', sync)
-    window.addEventListener('game-coins-updated', sync)
-    return () => {
-      window.removeEventListener('focus', sync)
-      window.removeEventListener('game-coins-updated', sync)
-    }
-  }, [])
-
-  return (
-    <div className="group relative">
-      <div className="app-surface flex h-9 items-center gap-1.5 border px-4 rounded-full text-sm font-semibold" tabIndex={0} aria-label={`遊戲金幣 ${coins}`} aria-describedby="coin-tooltip">
-        <IconCoin size={18} stroke={1.8} color="#f59e0b" aria-hidden="true" />
-        <span className="text-sm font-bold" style={{ color: '#e65100' }}>{coins}</span>
-      </div>
-      <span id="coin-tooltip" role="tooltip" className="pointer-events-none absolute left-0 top-full z-50 mt-2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">遊戲金幣</span>
-    </div>
-  )
 }

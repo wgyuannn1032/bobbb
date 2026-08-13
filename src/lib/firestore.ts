@@ -414,9 +414,16 @@ export async function addCoins(
   uid: string,
   amount: number
 ): Promise<number> {
-  const snap = await getDoc(doc(db, 'users', uid))
-  const current = (snap.data()?.coins ?? 0) as number
-  const newCoins = current + amount
-  await updateDoc(doc(db, 'users', uid), { coins: newCoins })
-  return newCoins
+  const userRef = doc(db, 'users', uid)
+  const delta = Math.floor(amount)
+
+  return runTransaction(db, async transaction => {
+    const snap = await transaction.get(userRef)
+    if (!snap.exists()) throw new Error('找不到使用者資料')
+
+    const current = Number(snap.data().coins ?? 0)
+    const newCoins = Math.max(0, current + delta)
+    transaction.update(userRef, { coins: newCoins })
+    return newCoins
+  })
 }

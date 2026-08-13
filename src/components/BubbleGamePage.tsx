@@ -38,17 +38,6 @@ const DIFFICULTIES: Difficulty[] = [
   { id: 'hard', label: '困難', description: '泡泡狂湧現，挑戰你的反應力', maxBubbles: 14, spawnMin: 400, spawnRange: 300, cloudChance: .2 },
 ]
 
-function readCoins() {
-  const value = Number.parseInt(localStorage.getItem('game_coins') ?? '0', 10)
-  return Number.isFinite(value) && value > 0 ? value : 0
-}
-
-function addCoins(amount: number) {
-  const coins = Math.max(0, readCoins() + Math.floor(amount))
-  localStorage.setItem('game_coins', String(coins))
-  window.dispatchEvent(new Event('game-coins-updated'))
-}
-
 function rewardFor(score: number, checkedIn: boolean) {
   const base = Math.max(10, Math.floor(score * .1))
   return checkedIn ? Math.round(base * 1.2) : base
@@ -71,7 +60,11 @@ function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, radius: 
   ctx.fill()
 }
 
-export default function BubbleGamePage() {
+interface Props {
+  onAwardCoins: (amount: number) => Promise<number>
+}
+
+export default function BubbleGamePage({ onAwardCoins }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const frameRef = useRef<number | null>(null)
   const spawnRef = useRef<number | null>(null)
@@ -178,10 +171,10 @@ export default function BubbleGamePage() {
     const earned = rewardFor(finalScore, false)
     awardedRef.current = earned
     setReward(earned)
-    addCoins(earned)
+    void onAwardCoins(earned).catch(() => undefined)
     setFreezeSeconds(0)
     setPhase('result')
-  }, [stopGame])
+  }, [onAwardCoins, stopGame])
 
   const startGame = useCallback((nextDifficulty = difficulty) => {
     stopGame()
@@ -322,10 +315,11 @@ export default function BubbleGamePage() {
 
   const toggleCheckIn = (enabled: boolean) => {
     const nextReward = rewardFor(score, enabled)
-    addCoins(nextReward - awardedRef.current)
+    const delta = nextReward - awardedRef.current
     awardedRef.current = nextReward
     setCheckedIn(enabled)
     setReward(nextReward)
+    if (delta !== 0) void onAwardCoins(delta).catch(() => undefined)
   }
 
   return (

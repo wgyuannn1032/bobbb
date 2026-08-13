@@ -38,19 +38,11 @@ function rewardFor(score: number, completed: boolean) {
   return base
 }
 
-function readCoins() {
-  const value = Number.parseInt(localStorage.getItem('game_coins') ?? '0', 10)
-  return Number.isFinite(value) ? value : 0
+interface Props {
+  onAwardCoins: (amount: number) => Promise<number>
 }
 
-function addCoins(amount: number) {
-  const coins = readCoins() + amount
-  localStorage.setItem('game_coins', String(coins))
-  window.dispatchEvent(new Event('game-coins-updated'))
-  return coins
-}
-
-export default function FlipGamePage() {
+export default function FlipGamePage({ onAwardCoins }: Props) {
   const [difficulty, setDifficulty] = useState<Difficulty>(DIFFICULTIES[0])
   const [phase, setPhase] = useState<'choose' | 'playing' | 'result'>('choose')
   const [cards, setCards] = useState<Card[]>([])
@@ -61,7 +53,7 @@ export default function FlipGamePage() {
   const [seconds, setSeconds] = useState(45)
   const [won, setWon] = useState(false)
   const [reward, setReward] = useState(0)
-  const [rewarded, setRewarded] = useState(false)
+  const rewardedRef = useRef(false)
   const timeoutRef = useRef<number | null>(null)
 
   const matchedPairs = useMemo(() => cards.filter(card => card.matched).length / 2, [cards])
@@ -72,12 +64,26 @@ export default function FlipGamePage() {
     timeoutRef.current = null
   }
 
+  const finishGame = (completed: boolean, finalScore: number) => {
+    clearPendingFlip()
+    setWon(completed)
+    const earned = rewardFor(finalScore, completed)
+    setReward(earned)
+    if (!rewardedRef.current && earned > 0) {
+      rewardedRef.current = true
+      void onAwardCoins(earned).catch(() => {
+        rewardedRef.current = false
+      })
+    }
+    setPhase('result')
+  }
+
   useEffect(() => () => clearPendingFlip(), [])
 
   useEffect(() => {
     if (phase !== 'playing') return
     if (seconds === 0) {
-      setPhase('result')
+      finishGame(false, score)
       return
     }
     const timer = window.setTimeout(() => setSeconds(value => Math.max(0, value - 1)), 1000)
@@ -95,20 +101,8 @@ export default function FlipGamePage() {
     setSeconds(nextDifficulty.time)
     setWon(false)
     setReward(0)
-    setRewarded(false)
+    rewardedRef.current = false
     setPhase('playing')
-  }
-
-  const finishGame = (completed: boolean, finalScore: number) => {
-    clearPendingFlip()
-    setWon(completed)
-    const earned = rewardFor(finalScore, completed)
-    setReward(earned)
-    if (!rewarded && earned > 0) {
-      addCoins(earned)
-      setRewarded(true)
-    }
-    setPhase('result')
   }
 
   const flipCard = (id: number) => {
