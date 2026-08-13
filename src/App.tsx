@@ -5,13 +5,19 @@ import { useAuth } from './hooks/useAuth'
 import { Auth } from 'firebase/auth'
 import { Firestore } from 'firebase/firestore'
 import { IconDiamond } from '@tabler/icons-react'
-import ConfigModal from './components/ConfigModal'
-import AuthPage    from './components/AuthPage'
-import HomePage    from './components/HomePage'
+import ConfigModal          from './components/ConfigModal'
+import AuthPage             from './components/AuthPage'
+import HomePage             from './components/HomePage'
+import CharacterColorPage   from './components/CharacterColorPage'
 
 type AppStage = 'loading' | 'needs-config' | 'ready'
 
+// 若 URL 帶有 ?page=color，直接顯示換色頁（不需登入）
+const isColorPage = new URLSearchParams(window.location.search).get('page') === 'color'
+
 export default function App() {
+  if (isColorPage) return <CharacterColorPage />
+
   const [config,   setConfig]   = useState<AppConfig | null>(null)
   const [stage,    setStage]    = useState<AppStage>('loading')
   const [authInst, setAuthInst] = useState<Auth | null>(null)
