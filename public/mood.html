@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>歆 — 情緒打卡</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #fdf6f0;
+      --card:      #ffffff;
+      --border:    #f0e6dc;
+      --text:      #4a3f35;
+      --muted:     #9e8d82;
+      --shadow:    0 4px 24px rgba(160,120,90,.10);
+
+      /* 馬卡龍配色 */
+      --c-thunder: #b0a4d8;
+      --c-rain:    #a8c8e8;
+      --c-volcano: #f4a6a0;
+      --c-sunny:   #fde9a2;
+      --c-cloudy:  #c8d8c8;
+      --c-rainbow: #f9c4d0;
+    }
+
+    body {
+      font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    /* ── App shell — two views ────────────────────────────────── */
+    #app {
+      position: relative;
+      width: 100%;
+      min-height: 100dvh;
+    }
+
+    .view {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      min-height: 100dvh;
+      background: var(--bg);
+      transition: transform .38s cubic-bezier(.4,0,.2,1), opacity .38s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-bottom: 56px;
+    }
+    .view.hidden-right {
+      transform: translateX(100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ── Header ──────────────────────────────────────────────── */
+    header {
+      width: 100%;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f9c4d0 0%, #b0a4d8 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    .header-info h1 { font-size: 17px; font-weight: 700; }
+    .header-info p  { font-size: 13px; color: var(--muted); }
+    .header-back {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: none; border: none; cursor: pointer;
+      font-size: 14px; font-weight: 600; color: var(--text);
+      padding: 4px 0;
+      margin-right: auto;
+    }
+    .header-back svg { flex-shrink: 0; }
+
+    /* ── Page wrapper ────────────────────────────────────────── */
+    main {
+      width: 100%;
+      max-width: 480px;
+      padding: 28px 20px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── Section title ───────────────────────────────────────── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    /* ── Date badge ──────────────────────────────────────────── */
+    .date-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 8px 18px;
+      font-size: 14px;
+      font-weight: 500;
+      width: fit-content;
+      box-shadow: var(--shadow);
+    }
+
+    /* ── Mood grid ───────────────────────────────────────────── */
+    .mood-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .mood-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 20px;
+      padding: 20px 12px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mood-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(160,120,90,.14); }
+    .mood-card.selected {
+      border-color: currentColor;
+      box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent);
+      transform: translateY(-4px) scale(1.03);
+    }
+    .mood-card .icon-wrap {
+      width: 64px; height: 64px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .mood-card .label { font-size: 13px; font-weight: 600; text-align: center; }
+    .mood-card .sub   { font-size: 11px; color: var(--muted); text-align: center; }
+
+    .mood-thunder { color: var(--c-thunder); }
+    .mood-thunder .icon-wrap { background: color-mix(in srgb, var(--c-thunder) 20%, white); }
+    .mood-rain    { color: var(--c-rain);    }
+    .mood-rain    .icon-wrap { background: color-mix(in srgb, var(--c-rain)    20%, white); }
+    .mood-volcano { color: var(--c-volcano); }
+    .mood-volcano .icon-wrap { background: color-mix(in srgb, var(--c-volcano) 20%, white); }
+    .mood-sunny   { color: var(--c-sunny);   }
+    .mood-sunny   .icon-wrap { background: color-mix(in srgb, var(--c-sunny)   30%, white); }
+    .mood-cloudy  { color: var(--c-cloudy);  }
+    .mood-cloudy  .icon-wrap { background: color-mix(in srgb, var(--c-cloudy)  30%, white); }
+    .mood-rainbow { color: var(--c-rainbow); }
+    .mood-rainbow .icon-wrap { background: color-mix(in srgb, var(--c-rainbow) 25%, white); }
+
+    /* ── Note textarea ───────────────────────────────────────── */
+    .note-wrap { display: flex; flex-direction: column; gap: 8px; }
+    textarea {
+      width: 100%;
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 14px; font-family: inherit; color: var(--text);
+      resize: none; outline: none;
+      transition: border-color .2s;
+      line-height: 1.6;
+    }
+    textarea::placeholder { color: var(--muted); }
+    textarea:focus { border-color: #b0a4d8; }
+
+    /* ── Submit button ───────────────────────────────────────── */
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(135deg, #f9c4d0 0%, #b0a4d8 100%);
+      color: #fff; border: none; border-radius: 16px;
+      padding: 16px;
+      font-size: 16px; font-weight: 700; font-family: inherit;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s;
+      letter-spacing: .04em;
+    }
+    .btn-submit:hover  { opacity: .9; transform: translateY(-1px); }
+    .btn-submit:active { transform: scale(.98); }
+    .btn-submit:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+    /* ── 樹洞入口小卡 ─────────────────────────────────────────── */
+    #treeholeEntry {
+      display: none;
+      background: var(--card);
+      border: 1.5px solid #d8c8f0;
+      border-radius: 20px;
+      padding: 18px 20px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(176,164,216,.18);
+      transition: transform .18s, box-shadow .18s;
+      animation: popIn .42s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    #treeholeEntry.visible { display: flex; align-items: center; gap: 16px; }
+    #treeholeEntry:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(176,164,216,.28); }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(.88) translateY(12px); }
+      to   { opacity: 1; transform: scale(1)   translateY(0);    }
+    }
+    .th-icon {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: linear-gradient(135deg, #f0eafb 0%, #ddf0f8 100%);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 26px;
+    }
+    .th-body { flex: 1; min-width: 0; }
+    .th-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .th-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+    .th-arrow {
+      color: #b0a4d8; flex-shrink: 0;
+      animation: nudge 1.6s ease-in-out infinite;
+    }
+    @keyframes nudge {
+      0%,100% { transform: translateX(0); }
+      50%      { transform: translateX(5px); }
+    }
+
+    /* ── History list ────────────────────────────────────────── */
+    .history-list { display: flex; flex-direction: column; gap: 12px; }
+    .history-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex; align-items: flex-start; gap: 14px;
+      box-shadow: var(--shadow);
+      animation: fadeUp .35s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .history-icon {
+      width: 44px; height: 44px; border-radius: 50%;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    }
+    .history-body { flex: 1; min-width: 0; }
+    .history-top  { display: flex; align-items: center; justify-content: space-between; }
+    .history-mood { font-size: 14px; font-weight: 700; }
+    .history-time { font-size: 12px; color: var(--muted); }
+    .history-note { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.5; word-break: break-all; }
+
+    /* ── Toast ───────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 32px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #4a3f35; color: #fff;
+      border-radius: 24px; padding: 12px 24px;
+      font-size: 14px; font-weight: 600;
+      white-space: nowrap; pointer-events: none;
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s;
+      opacity: 0; z-index: 999;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ── Empty state ─────────────────────────────────────────── */
+    .empty-state { text-align: center; padding: 24px 0 8px; color: var(--muted); font-size: 14px; }
+
+    /* ════════════════════════════════════════════════════════════
+       樹洞 View
+       ════════════════════════════════════════════════════════════ */
+    #viewTreehole {
+      background: #f8f4fc;
+    }
+    #viewTreehole header {
+      gap: 0;
+      background: #fff;
+      border-bottom: 1px solid #ede4f8;
+    }
+    #viewTreehole header .header-back { display: flex; }
+    #viewTreehole header .th-header-title {
+      font-size: 16px; font-weight: 700;
+      position: absolute; left: 50%; transform: translateX(-50%);
+    }
+    #viewTreehole main { gap: 16px; }
+
+    /* ── 匿名保障橫幅 ─────────────────────────────────────────── */
+    .anon-banner {
+      background: linear-gradient(135deg, #f0eafb 0%, #e8f4fb 100%);
+      border: 1px solid #ddd4f0;
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .anon-banner-icon { font-size: 22px; flex-shrink: 0; line-height: 1.4; }
+    .anon-banner-body { flex: 1; }
+    .anon-banner-title { font-size: 13px; font-weight: 700; color: #7060a8; margin-bottom: 3px; }
+    .anon-banner-desc  { font-size: 12px; color: #9080b8; line-height: 1.6; }
+    .anon-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .anon-pill {
+      font-size: 11px; font-weight: 600;
+      background: rgba(176,164,216,.18);
+      color: #8070b0; border-radius: 20px;
+      padding: 3px 10px;
+    }
+
+    /* ── 發文框 ──────────────────────────────────────────────── */
+    .post-compose {
+      background: var(--card);
+      border: 1.5px solid #e4d8f4;
+      border-radius: 20px;
+      padding: 18px;
+      display: flex; flex-direction: column; gap: 12px;
+      box-shadow: 0 4px 20px rgba(176,164,216,.14);
+    }
+    .compose-top { display: flex; align-items: flex-start; gap: 12px; }
+    .anon-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, #e8e0f8 0%, #d8eef8 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .compose-right { flex: 1; min-width: 0; }
+    .compose-textarea {
+      width: 100%; border: none; outline: none; resize: none;
+      font-size: 14px; font-family: inherit; color: var(--text);
+      background: transparent; line-height: 1.7; padding: 4px 0;
+      min-height: 72px;
+    }
+    .compose-textarea::placeholder { color: #c0b4aa; }
+    .compose-char { font-size: 11px; color: #c0b4aa; text-align: right; margin-top: 2px; }
+    .compose-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+    .compose-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .compose-hint {
+      font-size: 12px; color: #9080b8;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .btn-post {
+      background: linear-gradient(135deg, #f9c4d0 0%, #b0a4d8 100%);
+      color: #fff; border: none; border-radius: 24px;
+      padding: 9px 22px;
+      font-size: 14px; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: opacity .2s, transform .15s;
+      white-space: nowrap;
+    }
+    .btn-post:hover  { opacity: .88; transform: translateY(-1px); }
+    .btn-post:active { transform: scale(.97); }
+    .btn-post:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    /* 情緒標籤選擇（發文框內） */
+    .mood-tags { display: flex; gap: 7px; flex-wrap: wrap; }
+    .mood-tag {
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; background: var(--bg);
+      transition: border-color .15s, background .15s, color .15s;
+      user-select: none;
+    }
+    .mood-tag.active { border-color: currentColor; background: color-mix(in srgb, currentColor 12%, white); }
+    .tag-thunder { color: var(--c-thunder); }
+    .tag-rain    { color: var(--c-rain);    }
+    .tag-volcano { color: var(--c-volcano); }
+    .tag-sunny   { color: #e8b800;          }
+    .tag-cloudy  { color: #7aaa7a;          }
+    .tag-rainbow { color: #e8789a;          }
+
+    /* ── 動態牆標題列 ─────────────────────────────────────────── */
+    .feed-header {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .feed-count { font-size: 12px; color: var(--muted); }
+
+    /* 篩選 tab */
+    .filter-tabs {
+      display: flex; gap: 6px; overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .filter-tabs::-webkit-scrollbar { display: none; }
+    .filter-tab {
+      border: 1.5px solid var(--border);
+      border-radius: 20px; padding: 5px 14px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; background: var(--card);
+      white-space: nowrap;
+      transition: border-color .15s, background .15s, color .15s;
+      color: var(--muted);
+      user-select: none; flex-shrink: 0;
+    }
+    .filter-tab.active {
+      border-color: #b0a4d8; background: #f0eafb; color: #7060a8;
+    }
+    .filter-tab:hover { border-color: #b0a4d8; color: #7060a8; }
+
+    /* ── 貼文列表 ─────────────────────────────────────────────── */
+    .post-list { display: flex; flex-direction: column; gap: 14px; }
+
+    .post-card {
+      background: var(--card);
+      border: 1px solid #ede4f4;
+      border-radius: 18px;
+      padding: 16px 18px;
+      box-shadow: 0 2px 12px rgba(176,164,216,.10);
+      animation: fadeUp .35s ease both;
+      transition: box-shadow .18s;
+    }
+    .post-card:hover { box-shadow: 0 6px 24px rgba(176,164,216,.18); }
+
+    .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .post-anon-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .post-meta { flex: 1; min-width: 0; }
+    .post-name { font-size: 13px; font-weight: 700; color: var(--text); }
+    .post-sub  {
+      display: flex; align-items: center; gap: 6px; margin-top: 1px;
+    }
+    .post-time { font-size: 11px; color: var(--muted); }
+    .post-anon-badge {
+      font-size: 10px; font-weight: 600;
+      background: rgba(176,164,216,.15); color: #8878b8;
+      border-radius: 8px; padding: 1px 7px;
+    }
+    .post-mood-badge {
+      font-size: 11px; font-weight: 600;
+      border-radius: 12px; padding: 3px 10px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+    .post-body {
+      font-size: 14px; line-height: 1.75; color: var(--text);
+      word-break: break-all; white-space: pre-wrap;
+    }
+    .post-footer {
+      display: flex; align-items: center; gap: 0;
+      margin-top: 14px; padding-top: 12px;
+      border-top: 1px solid #f0e8f8;
+    }
+    /* 按讚按鈕 */
+    .btn-like {
+      display: flex; align-items: center; gap: 6px;
+      background: none; border: none; cursor: pointer;
+      font-size: 13px; color: var(--muted);
+      transition: color .18s;
+      padding: 6px 14px 6px 0; font-family: inherit;
+      border-radius: 20px;
+    }
+    .btn-like:hover .like-icon { transform: scale(1.2); }
+    .btn-like .like-icon { font-size: 16px; transition: transform .2s; display: inline-block; }
+    .btn-like.liked { color: #e8607a; }
+    .btn-like.liked .like-icon { animation: heartBeat .32s ease; }
+    @keyframes heartBeat {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.4); }
+      100% { transform: scale(1); }
+    }
+    /* 共鳴按鈕 */
+    .btn-resonate {
+      display: flex; align-items: center; gap: 6px;
+      background: none; border: none; cursor: pointer;
+      font-size: 13px; color: var(--muted);
+      transition: color .18s;
+      padding: 6px 14px; font-family: inherit;
+      border-radius: 20px;
+    }
+    .btn-resonate:hover { color: #b0a4d8; }
+    .btn-resonate.resonated { color: #9080c8; }
+    .btn-resonate .resonate-icon { font-size: 15px; display: inline-block; transition: transform .2s; }
+    .btn-resonate:hover .resonate-icon { transform: scale(1.15); }
+
+    /* 空狀態 */
+    .th-post-empty {
+      text-align: center; padding: 48px 0 16px;
+      color: var(--muted); font-size: 14px; line-height: 2.2;
+    }
+    .th-post-empty .empty-icon { font-size: 40px; display: block; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══════════ VIEW: 打卡主頁 ══════════ -->
+  <div class="view" id="viewHome">
+    <header>
+      <div class="avatar">歆</div>
+      <div class="header-info">
+        <h1>早安，歆 ☀️</h1>
+        <p>今天的心情是什麼天氣呢？</p>
+      </div>
+    </header>
+
+    <main>
+      <!-- 日期 -->
+      <div>
+        <div class="section-title">今天的日期</div>
+        <div class="date-badge">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="1" y="2" width="14" height="13" rx="2.5" stroke="#9e8d82" stroke-width="1.4"/>
+            <path d="M5 1v2M11 1v2M1 6h14" stroke="#9e8d82" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <span id="dateText"></span>
+        </div>
+      </div>
+
+      <!-- 選擇心情 -->
+      <div>
+        <div class="section-title">選擇心情</div>
+        <div class="mood-grid" id="moodGrid">
+
+          <div class="mood-card mood-thunder" data-mood="焦慮" data-key="thunder" tabindex="0">
+            <div class="icon-wrap">
+              <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+                <path d="M10 22a7 7 0 01.7-14 7.5 7.5 0 0114.6 2A5.5 5.5 0 1128 22H10z" fill="#b0a4d8" opacity=".85"/>
+                <line x1="13" y1="26" x2="11" y2="31" stroke="#8b7fc7" stroke-width="1.6" stroke-linecap="round"/>
+                <line x1="19" y1="26" x2="17" y2="31" stroke="#8b7fc7" stroke-width="1.6" stroke-linecap="round"/>
+                <line x1="25" y1="26" x2="23" y2="31" stroke="#8b7fc7" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M20 15l-4 7h4l-3 6" stroke="#f9e080" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="label">焦慮</div><div class="sub">雷雨</div>
+          </div>
+
+          <div class="mood-card mood-rain" data-mood="難過" data-key="rain" tabindex="0">
+            <div class="icon-wrap">
+              <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+                <path d="M10 20a7 7 0 01.7-14 7.5 7.5 0 0114.6 2A5.5 5.5 0 1128 20H10z" fill="#a8c8e8" opacity=".9"/>
+                <line x1="13" y1="24" x2="12" y2="29" stroke="#6aaad4" stroke-width="1.6" stroke-linecap="round"/>
+                <line x1="18" y1="24" x2="17" y2="29" stroke="#6aaad4" stroke-width="1.6" stroke-linecap="round"/>
+                <line x1="23" y1="24" x2="22" y2="29" stroke="#6aaad4" stroke-width="1.6" stroke-linecap="round"/>
+                <line x1="10" y1="27" x2="9"  y2="32" stroke="#6aaad4" stroke-width="1.6" stroke-linecap="round"/>
+                <line x1="27" y1="27" x2="26" y2="32" stroke="#6aaad4" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="label">難過</div><div class="sub">下雨</div>
+          </div>
+
+          <div class="mood-card mood-volcano" data-mood="生氣" data-key="volcano" tabindex="0">
+            <div class="icon-wrap">
+              <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+                <path d="M6 32l13-22 13 22z" fill="#f4a6a0" opacity=".85"/>
+                <path d="M16 17l-2 6h2l-1.5 4" stroke="#e05a4a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="20" cy="9" r="1.2" fill="#f9c4a0"/>
+                <circle cx="23" cy="12" r=".9" fill="#f9c4a0"/>
+                <circle cx="17" cy="11" r=".9" fill="#f9c4a0"/>
+                <path d="M19 8c0-2 3-3 3-1M17 8c0-2-3-2.5-2-.5" stroke="#e8c8c0" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="label">生氣</div><div class="sub">火山</div>
+          </div>
+
+          <div class="mood-card mood-sunny" data-mood="平靜" data-key="sunny" tabindex="0">
+            <div class="icon-wrap">
+              <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+                <circle cx="19" cy="19" r="8" fill="#fde047" opacity=".9"/>
+                <line x1="19" y1="5"  x2="19" y2="9"  stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="19" y1="29" x2="19" y2="33" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="5"  y1="19" x2="9"  y2="19" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="29" y1="19" x2="33" y2="19" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="9.1"  y1="9.1"  x2="11.9" y2="11.9" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="26.1" y1="26.1" x2="28.9" y2="28.9" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="28.9" y1="9.1"  x2="26.1" y2="11.9" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="11.9" y1="26.1" x2="9.1"  y2="28.9" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="label">平靜</div><div class="sub">晴天</div>
+          </div>
+
+          <div class="mood-card mood-cloudy" data-mood="疲憊" data-key="cloudy" tabindex="0">
+            <div class="icon-wrap">
+              <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+                <path d="M8 24a6 6 0 01.6-12 6.5 6.5 0 0112.6 1.7A4.8 4.8 0 1124 24H8z" fill="#c8d8c8" opacity=".7"/>
+                <path d="M14 28a5 5 0 01.5-10 5.4 5.4 0 0110.5 1.5A4 4 0 1128 28H14z" fill="#b0c8b0" opacity=".9"/>
+              </svg>
+            </div>
+            <div class="label">疲憊</div><div class="sub">陰天</div>
+          </div>
+
+          <div class="mood-card mood-rainbow" data-mood="開心" data-key="rainbow" tabindex="0">
+            <div class="icon-wrap">
+              <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+                <path d="M5 26a14 14 0 0128 0" stroke="#f4a6a0" stroke-width="3" stroke-linecap="round" fill="none"/>
+                <path d="M8 26a11 11 0 0122 0" stroke="#fde9a2" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                <path d="M11 26a8  8  0 0116 0" stroke="#a8d8c8" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                <path d="M14 26a5  5  0 0110 0" stroke="#a8c8e8" stroke-width="2"   stroke-linecap="round" fill="none"/>
+                <ellipse cx="5.5"  cy="25.5" rx="3" ry="2" fill="#f9c4d0" opacity=".8"/>
+                <ellipse cx="32.5" cy="25.5" rx="3" ry="2" fill="#f9c4d0" opacity=".8"/>
+              </svg>
+            </div>
+            <div class="label">開心</div><div class="sub">彩虹</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 留言 -->
+      <div class="note-wrap">
+        <div class="section-title">寫下今天的心情（選填）</div>
+        <textarea id="noteInput" rows="3" maxlength="200"
+          placeholder="今天發生了什麼事呢… ✍️"></textarea>
+      </div>
+
+      <!-- 打卡按鈕 -->
+      <button class="btn-submit" id="btnSubmit" disabled>選擇心情後打卡 ✓</button>
+
+      <!-- 🌳 樹洞入口小卡 -->
+      <div id="treeholeEntry" tabindex="0" role="button" aria-label="前往匿名樹洞">
+        <div class="th-icon">🌳</div>
+        <div class="th-body">
+          <div class="th-title">匿名樹洞</div>
+          <div class="th-sub">說出來才會輕鬆一點<br>這裡沒有人認識你</div>
+        </div>
+        <div class="th-arrow">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 歷史紀錄 -->
+      <div>
+        <div class="section-title">打卡紀錄</div>
+        <div class="history-list" id="historyList">
+          <div class="empty-state" id="emptyState">還沒有打卡記錄，快來打第一張卡吧 🌤️</div>
+        </div>
+      </div>
+    </main>
+  </div><!-- /viewHome -->
+
+
+  <!-- ══════════ VIEW: 匿名樹洞 ══════════ -->
+  <div class="view hidden-right" id="viewTreehole">
+    <header style="position:relative;">
+      <button class="header-back" id="btnBack">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M13 4l-6 6 6 6" stroke="#4a3f35" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        返回
+      </button>
+      <span class="th-header-title">🌳 匿名樹洞</span>
+    </header>
+
+    <main>
+
+      <!-- 匿名保障橫幅 -->
+      <div class="anon-banner">
+        <div class="anon-banner-icon">🔒</div>
+        <div class="anon-banner-body">
+          <div class="anon-banner-title">這裡完全匿名，沒有人知道你是誰</div>
+          <div class="anon-banner-desc">每次發文都會自動換一個隨機暱稱。你的真實身份、位置、任何個資都不會被記錄。</div>
+          <div class="anon-pills">
+            <span class="anon-pill">🙈 不記名</span>
+            <span class="anon-pill">📍 不留位置</span>
+            <span class="anon-pill">👤 無個人資料</span>
+            <span class="anon-pill">🔐 本機加密</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 發文框 -->
+      <div class="post-compose">
+        <div class="compose-top">
+          <div class="anon-avatar" id="composeAvatar">🌿</div>
+          <div class="compose-right">
+            <textarea class="compose-textarea" id="postInput" rows="3" maxlength="300"
+              placeholder="把心裡的話說出來吧，這裡沒有人認識你…"></textarea>
+            <div class="compose-char"><span id="charCount">0</span> / 300</div>
+          </div>
+        </div>
+        <!-- 情緒標籤 -->
+        <div class="mood-tags" id="composeTags">
+          <div class="mood-tag tag-thunder" data-key="thunder">⛈ 焦慮</div>
+          <div class="mood-tag tag-rain"    data-key="rain">🌧 難過</div>
+          <div class="mood-tag tag-volcano" data-key="volcano">🌋 生氣</div>
+          <div class="mood-tag tag-sunny"   data-key="sunny">☀️ 平靜</div>
+          <div class="mood-tag tag-cloudy"  data-key="cloudy">☁️ 疲憊</div>
+          <div class="mood-tag tag-rainbow" data-key="rainbow">🌈 開心</div>
+        </div>
+        <hr class="compose-divider">
+        <div class="compose-bottom">
+          <span class="compose-hint">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#9080b8" stroke-width="1.4"/><path d="M8 5v4M8 11v.5" stroke="#9080b8" stroke-width="1.5" stroke-linecap="round"/></svg>
+            完全匿名發布
+          </span>
+          <button class="btn-post" id="btnPost" disabled>說出來 ✦</button>
+        </div>
+      </div>
+
+      <!-- 動態牆 -->
+      <div>
+        <div class="feed-header">
+          <div class="section-title" style="margin-bottom:0">大家的心聲</div>
+          <span class="feed-count" id="feedCount"></span>
+        </div>
+
+        <!-- 篩選 tab -->
+        <div class="filter-tabs" id="filterTabs" style="margin-top:10px">
+          <div class="filter-tab active" data-filter="all">全部</div>
+          <div class="filter-tab" data-filter="thunder">⛈ 焦慮</div>
+          <div class="filter-tab" data-filter="rain">🌧 難過</div>
+          <div class="filter-tab" data-filter="volcano">🌋 生氣</div>
+          <div class="filter-tab" data-filter="sunny">☀️ 平靜</div>
+          <div class="filter-tab" data-filter="cloudy">☁️ 疲憊</div>
+          <div class="filter-tab" data-filter="rainbow">🌈 開心</div>
+        </div>
+
+        <div class="post-list" id="postList" style="margin-top:14px">
+          <div class="th-post-empty" id="postEmpty">
+            <span class="empty-icon">🍃</span>
+            還沒有人說話<br>成為第一個在樹洞裡呼喊的人吧
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div><!-- /viewTreehole -->
+
+</div><!-- /app -->
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  Constants & State
+// ═══════════════════════════════════════════════════════════════
+const STORAGE_KEY      = 'xin_mood_records';
+const POST_STORAGE_KEY = 'xin_treehole_posts';
+
+const MOOD_META = {
+  thunder: { label: '焦慮', sub: '雷雨',  color: '#b0a4d8', bg: 'rgba(176,164,216,.18)', emoji: '⛈' },
+  rain:    { label: '難過', sub: '下雨',  color: '#a8c8e8', bg: 'rgba(168,200,232,.18)', emoji: '🌧' },
+  volcano: { label: '生氣', sub: '火山',  color: '#f4a6a0', bg: 'rgba(244,166,160,.18)', emoji: '🌋' },
+  sunny:   { label: '平靜', sub: '晴天',  color: '#f5d44a', bg: 'rgba(253,233,162,.28)', emoji: '☀️' },
+  cloudy:  { label: '疲憊', sub: '陰天',  color: '#9eb89e', bg: 'rgba(200,216,200,.28)', emoji: '☁️' },
+  rainbow: { label: '開心', sub: '彩虹',  color: '#f9c4d0', bg: 'rgba(249,196,208,.22)', emoji: '🌈' },
+};
+
+// 匿名暱稱種子
+const ANON_NAMES = [
+  '迷路的雲朵','某個路人','不知名的星星','喜歡下雨的人',
+  '散步中的貓咪','安靜的樹','偶爾的風','記不住名字的花',
+  '某個夜晚','喝茶的小熊','窗邊的人','想睡覺的月亮',
+];
+const ANON_EMOJIS = ['🌿','🍃','🌾','🍂','🌸','🌻','🌼','🍀','🌱'];
+
+let selectedMood     = null;
+let composeTagKey    = null;
+let posts            = [];
+
+// ─── DOM refs ────────────────────────────────────────────────
+const moodGrid      = document.getElementById('moodGrid');
+const noteInput     = document.getElementById('noteInput');
+const btnSubmit     = document.getElementById('btnSubmit');
+const historyList   = document.getElementById('historyList');
+const emptyState    = document.getElementById('emptyState');
+const dateText      = document.getElementById('dateText');
+const toast         = document.getElementById('toast');
+const treeholeEntry = document.getElementById('treeholeEntry');
+const viewHome      = document.getElementById('viewHome');
+const viewTreehole  = document.getElementById('viewTreehole');
+const btnBack       = document.getElementById('btnBack');
+const postInput     = document.getElementById('postInput');
+const btnPost       = document.getElementById('btnPost');
+const composeTags   = document.getElementById('composeTags');
+const postList      = document.getElementById('postList');
+const postEmpty     = document.getElementById('postEmpty');
+const composeAvatar = document.getElementById('composeAvatar');
+const charCount     = document.getElementById('charCount');
+const feedCount     = document.getElementById('feedCount');
+const filterTabs    = document.getElementById('filterTabs');
+
+let activeFilter = 'all';
+
+// ═══════════════════════════════════════════════════════════════
+//  Date
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  const d = new Date();
+  const days = ['日','一','二','三','四','五','六'];
+  dateText.textContent = `${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日（週${days[d.getDay()]}）`;
+})();
+
+// ═══════════════════════════════════════════════════════════════
+//  Navigation
+// ═══════════════════════════════════════════════════════════════
+function showTreehole() {
+  viewTreehole.classList.remove('hidden-right');
+  viewHome.style.pointerEvents = 'none';
+  viewHome.style.opacity = '.4';
+  // 捲回頂
+  viewTreehole.scrollTop = 0;
+}
+function showHome() {
+  viewTreehole.classList.add('hidden-right');
+  viewHome.style.pointerEvents = '';
+  viewHome.style.opacity = '';
+}
+
+treeholeEntry.addEventListener('click',  showTreehole);
+treeholeEntry.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showTreehole(); } });
+btnBack.addEventListener('click', showHome);
+
+// ═══════════════════════════════════════════════════════════════
+//  Mood Selection (打卡頁)
+// ═══════════════════════════════════════════════════════════════
+moodGrid.addEventListener('click', e => {
+  const card = e.target.closest('.mood-card');
+  if (!card) return;
+  selectMood(card.dataset.key);
+});
+moodGrid.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const card = e.target.closest('.mood-card');
+  if (card) { e.preventDefault(); selectMood(card.dataset.key); }
+});
+
+function selectMood(key) {
+  selectedMood = key;
+  document.querySelectorAll('.mood-card').forEach(c =>
+    c.classList.toggle('selected', c.dataset.key === key));
+  btnSubmit.disabled = false;
+  btnSubmit.textContent = `以「${MOOD_META[key].label}」打卡 ✓`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Submit (打卡)
+// ═══════════════════════════════════════════════════════════════
+btnSubmit.addEventListener('click', () => {
+  if (!selectedMood) return;
+  const record = { key: selectedMood, note: noteInput.value.trim(), ts: Date.now() };
+  saveRecord(record);
+  prependHistoryItem(record);
+
+  // 顯示樹洞入口小卡
+  treeholeEntry.classList.add('visible');
+
+  // reset
+  selectedMood = null;
+  noteInput.value = '';
+  document.querySelectorAll('.mood-card').forEach(c => c.classList.remove('selected'));
+  btnSubmit.disabled = true;
+  btnSubmit.textContent = '選擇心情後打卡 ✓';
+
+  showToast('打卡成功！好好照顧自己 💛');
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  Storage — 打卡
+// ═══════════════════════════════════════════════════════════════
+function loadRecords() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
+}
+function saveRecord(r) {
+  const list = loadRecords();
+  list.unshift(r);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 100)));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SVG icons (打卡歷史用)
+// ═══════════════════════════════════════════════════════════════
+function buildSvgIcon(key) {
+  const icons = {
+    thunder:`<svg width="26" height="26" viewBox="0 0 38 38" fill="none"><path d="M10 22a7 7 0 01.7-14 7.5 7.5 0 0114.6 2A5.5 5.5 0 1128 22H10z" fill="#b0a4d8" opacity=".85"/><line x1="13" y1="26" x2="11" y2="31" stroke="#8b7fc7" stroke-width="1.6" stroke-linecap="round"/><line x1="19" y1="26" x2="17" y2="31" stroke="#8b7fc7" stroke-width="1.6" stroke-linecap="round"/><line x1="25" y1="26" x2="23" y2="31" stroke="#8b7fc7" stroke-width="1.6" stroke-linecap="round"/><path d="M20 15l-4 7h4l-3 6" stroke="#f9e080" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    rain:   `<svg width="26" height="26" viewBox="0 0 38 38" fill="none"><path d="M10 20a7 7 0 01.7-14 7.5 7.5 0 0114.6 2A5.5 5.5 0 1128 20H10z" fill="#a8c8e8" opacity=".9"/><line x1="13" y1="24" x2="12" y2="29" stroke="#6aaad4" stroke-width="1.6" stroke-linecap="round"/><line x1="18" y1="24" x2="17" y2="29" stroke="#6aaad4" stroke-width="1.6" stroke-linecap="round"/><line x1="23" y1="24" x2="22" y2="29" stroke="#6aaad4" stroke-width="1.6" stroke-linecap="round"/><line x1="10" y1="27" x2="9" y2="32" stroke="#6aaad4" stroke-width="1.6" stroke-linecap="round"/><line x1="27" y1="27" x2="26" y2="32" stroke="#6aaad4" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+    volcano:`<svg width="26" height="26" viewBox="0 0 38 38" fill="none"><path d="M6 32l13-22 13 22z" fill="#f4a6a0" opacity=".85"/><path d="M16 17l-2 6h2l-1.5 4" stroke="#e05a4a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="9" r="1.2" fill="#f9c4a0"/></svg>`,
+    sunny:  `<svg width="26" height="26" viewBox="0 0 38 38" fill="none"><circle cx="19" cy="19" r="8" fill="#fde047" opacity=".9"/><line x1="19" y1="5" x2="19" y2="9" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/><line x1="19" y1="29" x2="19" y2="33" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="19" x2="9" y2="19" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/><line x1="29" y1="19" x2="33" y2="19" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+    cloudy: `<svg width="26" height="26" viewBox="0 0 38 38" fill="none"><path d="M8 24a6 6 0 01.6-12 6.5 6.5 0 0112.6 1.7A4.8 4.8 0 1124 24H8z" fill="#c8d8c8" opacity=".7"/><path d="M14 28a5 5 0 01.5-10 5.4 5.4 0 0110.5 1.5A4 4 0 1128 28H14z" fill="#b0c8b0" opacity=".9"/></svg>`,
+    rainbow:`<svg width="26" height="26" viewBox="0 0 38 38" fill="none"><path d="M5 26a14 14 0 0128 0" stroke="#f4a6a0" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M8 26a11 11 0 0122 0" stroke="#fde9a2" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M11 26a8 8 0 0116 0" stroke="#a8d8c8" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M14 26a5 5 0 0110 0" stroke="#a8c8e8" stroke-width="2" stroke-linecap="round" fill="none"/></svg>`,
+  };
+  return icons[key] || '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  History rendering
+// ═══════════════════════════════════════════════════════════════
+function prependHistoryItem(r) {
+  emptyState.style.display = 'none';
+  const meta = MOOD_META[r.key];
+  const d    = new Date(r.ts);
+  const time = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  const el = document.createElement('div');
+  el.className = 'history-item';
+  el.innerHTML = `
+    <div class="history-icon" style="background:${meta.bg}">${buildSvgIcon(r.key)}</div>
+    <div class="history-body">
+      <div class="history-top">
+        <span class="history-mood" style="color:${meta.color}">${meta.label} · ${meta.sub}</span>
+        <span class="history-time">${time}</span>
+      </div>
+      ${r.note ? `<div class="history-note">${escapeHtml(r.note)}</div>` : ''}
+    </div>`;
+  historyList.insertBefore(el, historyList.firstChild);
+}
+
+function initHistory() {
+  const records = loadRecords();
+  if (records.length === 0) return;
+  emptyState.style.display = 'none';
+  // 如果有歷史記錄也顯示樹洞入口
+  treeholeEntry.classList.add('visible');
+  records.forEach(r => {
+    const meta = MOOD_META[r.key];
+    const d    = new Date(r.ts);
+    const time = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const el = document.createElement('div');
+    el.className = 'history-item';
+    el.style.animation = 'none';
+    el.innerHTML = `
+      <div class="history-icon" style="background:${meta.bg}">${buildSvgIcon(r.key)}</div>
+      <div class="history-body">
+        <div class="history-top">
+          <span class="history-mood" style="color:${meta.color}">${meta.label} · ${meta.sub}</span>
+          <span class="history-time">${time}</span>
+        </div>
+        ${r.note ? `<div class="history-note">${escapeHtml(r.note)}</div>` : ''}
+      </div>`;
+    historyList.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  匿名樹洞 — 發文
+// ═══════════════════════════════════════════════════════════════
+
+// 情緒標籤
+composeTags.addEventListener('click', e => {
+  const tag = e.target.closest('.mood-tag');
+  if (!tag) return;
+  composeTagKey = tag.dataset.key;
+  document.querySelectorAll('.mood-tag').forEach(t =>
+    t.classList.toggle('active', t.dataset.key === composeTagKey));
+  // 換頭像 emoji
+  composeAvatar.textContent = MOOD_META[composeTagKey].emoji;
+});
+
+// 字數計數
+postInput.addEventListener('input', () => {
+  const len = postInput.value.length;
+  charCount.textContent = len;
+  btnPost.disabled = postInput.value.trim().length === 0;
+});
+
+// 發文
+btnPost.addEventListener('click', () => {
+  const text = postInput.value.trim();
+  if (!text) return;
+
+  const nameIdx  = Math.floor(Math.random() * ANON_NAMES.length);
+  const emojiIdx = Math.floor(Math.random() * ANON_EMOJIS.length);
+  const post = {
+    id:      Date.now(),
+    text,
+    moodKey: composeTagKey,
+    name:    ANON_NAMES[nameIdx],
+    emoji:   ANON_EMOJIS[emojiIdx],
+    ts:      Date.now(),
+    hearts:  0,
+    hugs:    0,
+  };
+
+  posts.unshift(post);
+  savePosts();
+  // 只有符合目前篩選的才直接插入畫面
+  if (activeFilter === 'all' || activeFilter === post.moodKey) {
+    prependPost(post);
+  }
+  updateFeedCount();
+
+  // reset
+  postInput.value  = '';
+  charCount.textContent = '0';
+  composeTagKey    = null;
+  composeAvatar.textContent = '🌿';
+  document.querySelectorAll('.mood-tag').forEach(t => t.classList.remove('active'));
+  btnPost.disabled = true;
+
+  showToast('說出來了，感覺好一點了嗎 🍃');
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  匿名樹洞 — 貼文渲染 & 篩選
+// ═══════════════════════════════════════════════════════════════
+function prependPost(p) {
+  postEmpty.style.display = 'none';
+  const el = buildPostEl(p);
+  postList.insertBefore(el, postList.firstChild);
+}
+
+// 取時間差文字
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return '剛剛';
+  if (m < 60) return `${m} 分鐘前`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} 小時前`;
+  const day = Math.floor(h / 24);
+  return `${day} 天前`;
+}
+
+function buildPostEl(p) {
+  const meta = p.moodKey ? MOOD_META[p.moodKey] : null;
+  const badgeHtml = meta
+    ? `<span class="post-mood-badge" style="color:${meta.color};border-color:${meta.color};background:color-mix(in srgb,${meta.color} 12%,white)">${meta.emoji} ${meta.label}</span>`
+    : '';
+  // 隨機頭像背景色（根據 name hash）
+  const bgPalette = ['rgba(176,164,216,.18)','rgba(168,200,232,.18)','rgba(244,166,160,.18)','rgba(253,233,162,.28)','rgba(200,216,200,.28)','rgba(249,196,208,.22)'];
+  const bgIdx = p.name.length % bgPalette.length;
+
+  const el = document.createElement('div');
+  el.className = 'post-card';
+  el.dataset.postId = p.id;
+  el.innerHTML = `
+    <div class="post-header">
+      <div class="post-anon-avatar" style="background:${bgPalette[bgIdx]}">${p.emoji}</div>
+      <div class="post-meta">
+        <div class="post-name">${escapeHtml(p.name)}</div>
+        <div class="post-sub">
+          <span class="post-time">${timeAgo(p.ts)}</span>
+          <span class="post-anon-badge">匿名</span>
+        </div>
+      </div>
+      ${badgeHtml}
+    </div>
+    <div class="post-body">${escapeHtml(p.text)}</div>
+    <div class="post-footer">
+      <button class="btn-like${p._likedByMe?' liked':''}" data-id="${p.id}" title="按讚">
+        <span class="like-icon">${p._likedByMe ? '❤️' : '🤍'}</span>
+        <span class="like-count">${p.likes || p.hearts || 0}</span>
+      </button>
+      <button class="btn-resonate${p._resonatedByMe?' resonated':''}" data-id="${p.id}" title="我也有同感">
+        <span class="resonate-icon">🕊️</span>
+        <span class="resonate-count">${p.resonates || 0}</span> 我也是
+      </button>
+    </div>`;
+  return el;
+}
+
+// 按讚 & 共鳴 互動
+postList.addEventListener('click', e => {
+  const likeBtn     = e.target.closest('.btn-like');
+  const resonateBtn = e.target.closest('.btn-resonate');
+  if (likeBtn)     toggleLike(likeBtn);
+  if (resonateBtn) toggleResonate(resonateBtn);
+});
+
+function toggleLike(btn) {
+  const id   = Number(btn.dataset.id);
+  const post = posts.find(p => p.id === id);
+  if (!post) return;
+  post._likedByMe = !post._likedByMe;
+  // 相容舊欄位名稱
+  post.likes = (post.likes ?? post.hearts ?? 0) + (post._likedByMe ? 1 : -1);
+  savePosts();
+  btn.classList.toggle('liked', post._likedByMe);
+  btn.querySelector('.like-icon').textContent = post._likedByMe ? '❤️' : '🤍';
+  btn.querySelector('.like-count').textContent = post.likes;
+  if (post._likedByMe) {
+    const icon = btn.querySelector('.like-icon');
+    icon.style.animation = 'none';
+    requestAnimationFrame(() => { icon.style.animation = ''; });
+  }
+}
+
+function toggleResonate(btn) {
+  const id   = Number(btn.dataset.id);
+  const post = posts.find(p => p.id === id);
+  if (!post) return;
+  post._resonatedByMe = !post._resonatedByMe;
+  post.resonates = (post.resonates || 0) + (post._resonatedByMe ? 1 : -1);
+  savePosts();
+  btn.classList.toggle('resonated', post._resonatedByMe);
+  btn.querySelector('.resonate-count').textContent = post.resonates;
+  if (post._resonatedByMe) showToast('謝謝你的共鳴 🕊️');
+}
+
+// ── 篩選 tab ──────────────────────────────────────────────────
+filterTabs.addEventListener('click', e => {
+  const tab = e.target.closest('.filter-tab');
+  if (!tab) return;
+  activeFilter = tab.dataset.filter;
+  document.querySelectorAll('.filter-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.filter === activeFilter));
+  renderFeed();
+});
+
+function renderFeed() {
+  // 清除現有貼文（保留 empty state）
+  Array.from(postList.children).forEach(el => {
+    if (!el.id) postList.removeChild(el);
+  });
+  const filtered = activeFilter === 'all'
+    ? posts
+    : posts.filter(p => p.moodKey === activeFilter);
+
+  if (filtered.length === 0) {
+    postEmpty.style.display = '';
+    return;
+  }
+  postEmpty.style.display = 'none';
+  filtered.forEach(p => {
+    const el = buildPostEl(p);
+    el.style.animation = 'none';
+    postList.appendChild(el);
+  });
+}
+
+function updateFeedCount() {
+  const count = activeFilter === 'all' ? posts.length : posts.filter(p => p.moodKey === activeFilter).length;
+  feedCount.textContent = count > 0 ? `共 ${count} 則` : '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Storage — 樹洞貼文
+// ═══════════════════════════════════════════════════════════════
+function savePosts() {
+  localStorage.setItem(POST_STORAGE_KEY, JSON.stringify(posts.slice(0, 200)));
+}
+function loadPosts() {
+  try { return JSON.parse(localStorage.getItem(POST_STORAGE_KEY)) || []; } catch { return []; }
+}
+function initPosts() {
+  posts = loadPosts();
+  if (posts.length === 0) return;
+  renderFeed();
+  updateFeedCount();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Toast
+// ═══════════════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════════════════════
+initHistory();
+initPosts();
+</script>
+</body>
+</html>

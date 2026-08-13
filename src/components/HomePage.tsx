@@ -18,6 +18,7 @@ import {
   IconMenu2,
   IconUserEdit,
   IconX,
+  IconMoodSmile,
 } from '@tabler/icons-react'
 import {
   getUserData,
@@ -62,6 +63,15 @@ const GAMES = [
     icon: <IconCards size={20} aria-hidden="true" />,
     label: '星際花園翻翻看',
     color: 'text-violet-400',
+  },
+]
+
+const TOOLS = [
+  {
+    href: '/mood.html',
+    icon: <IconMoodSmile size={20} aria-hidden="true" />,
+    label: '情緒打卡',
+    color: 'text-rose-400',
   },
 ]
 
@@ -213,9 +223,25 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
           </button>
         </div>
 
-        {/* Games section */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        {/* Games & Tools section */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           <p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 tracking-wider">
+            💛 心情工具
+          </p>
+          {TOOLS.map(t => (
+            <a
+              key={t.href}
+              href={t.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl app-hover app-text-secondary text-sm font-medium transition group"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <span className={`${t.color} transition`}>{t.icon}</span>
+              <span>{t.label}</span>
+            </a>
+          ))}
+          <p className="app-text-muted text-xs font-semibold uppercase px-2 mb-2 mt-3 tracking-wider">
             🎮 紓壓小遊戲
           </p>
           {GAMES.map(g => (
