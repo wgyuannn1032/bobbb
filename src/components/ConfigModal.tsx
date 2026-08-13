@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { IconSettings } from '@tabler/icons-react'
 import { AppConfig, persistConfig } from '../lib/firebase'
+import Dialog from './Dialog'
 
 interface Props {
   onSaved: (cfg: AppConfig) => void
@@ -28,8 +29,7 @@ export default function ConfigModal({ onSaved }: Props) {
   }
 
   return (
-    <div className="app-overlay fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4">
-      <div className="app-surface app-text border rounded-2xl p-8 w-full max-w-md animate-fade-in-up shadow-2xl overflow-y-auto max-h-[90vh]">
+    <Dialog closeOnBackdrop={false} closeOnEscape={false} panelClassName="max-w-md max-h-[90vh] overflow-y-auto p-8">
         <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
           <IconSettings size={22} className="app-accent" aria-hidden="true" />
           設定 Firebase
@@ -77,7 +77,6 @@ export default function ConfigModal({ onSaved }: Props) {
         >
           儲存並開始
         </button>
-      </div>
-    </div>
+    </Dialog>
   )
 }

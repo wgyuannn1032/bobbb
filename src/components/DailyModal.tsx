@@ -12,6 +12,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { DailyQuestion, calcGems } from '../lib/gemini'
+import Dialog from './Dialog'
 
 type Stage = 'loading' | 'question' | 'reward'
 
@@ -63,11 +64,7 @@ export default function DailyModal({ question, questionIndex, totalQuestions, ge
   }
 
   return (
-    <div
-      className="app-overlay fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="app-surface app-text border rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-fade-in-up max-h-[90vh] overflow-y-auto">
+    <Dialog onClose={onClose} panelClassName="max-w-lg max-h-[90vh] overflow-y-auto p-6">
 
         {/* ── LOADING ── */}
         {stage === 'loading' && (
@@ -193,7 +190,6 @@ export default function DailyModal({ question, questionIndex, totalQuestions, ge
             </button>
           </div>
         )}
-      </div>
-    </div>
+    </Dialog>
   )
 }

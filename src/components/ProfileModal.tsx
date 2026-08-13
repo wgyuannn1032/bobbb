@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useState } from 'react'
 import { IconFileDescription, IconUser, IconX } from '@tabler/icons-react'
+import Dialog from './Dialog'
 
 interface Props {
   displayName: string
@@ -20,14 +21,6 @@ export default function ProfileModal({
   const [bio, setBio] = useState(description)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !saving) onClose()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose, saving])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -59,10 +52,7 @@ export default function ProfileModal({
   }
 
   return (
-    <div className="app-overlay fixed inset-0 z-[60] flex items-center justify-center p-4" onMouseDown={event => {
-      if (event.target === event.currentTarget && !saving) onClose()
-    }}>
-      <div className="app-surface w-full max-w-md border rounded-2xl shadow-2xl animate-fade-in-up" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+    <Dialog onClose={onClose} labelledBy="profile-title" closeOnBackdrop={!saving} closeOnEscape={!saving} panelClassName="max-w-md" overlayClassName="z-[60]">
         <header className="flex items-center justify-between px-5 py-4 border-b border-[var(--app-border)]">
           <div>
             <h2 id="profile-title" className="app-text font-bold">編輯個人資料</h2>
@@ -104,7 +94,6 @@ export default function ProfileModal({
             <button type="submit" disabled={saving} className="btn-grad flex-1">{saving ? '儲存中…' : '儲存變更'}</button>
           </div>
         </form>
-      </div>
-    </div>
+    </Dialog>
   )
 }

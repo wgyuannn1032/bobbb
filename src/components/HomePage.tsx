@@ -97,6 +97,15 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 
   const today = todayKey()
 
+  useEffect(() => {
+    const titles: Record<View, string> = {
+      home: 'DailyGem',
+      questions: '每日問答｜DailyGem',
+      mood: '情緒打卡｜DailyGem',
+    }
+    document.title = titles[view]
+  }, [view])
+
   const loadData = useCallback(async () => {
     const [ud, ans, shared] = await Promise.all([
       getUserData(db, user.uid),

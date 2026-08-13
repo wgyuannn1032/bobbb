@@ -14,6 +14,7 @@ import {
 } from '@tabler/icons-react'
 import { fetchAnswers, AnswerRecord, updateAnswer, deleteAnswer } from '../lib/firestore'
 import AppNav from './AppNav'
+import Dialog from './Dialog'
 
 interface Props {
   db:     Firestore
@@ -178,17 +179,7 @@ function DeleteAnswerModal({ record, deleting, onConfirm, onClose }: DeleteAnswe
   }
 
   return (
-    <div
-      className="app-overlay fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4"
-      onClick={event => { if (event.target === event.currentTarget && !deleting) onClose() }}
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="delete-answer-title"
-        aria-describedby="delete-answer-description"
-        className="app-surface app-text border rounded-2xl p-6 w-full max-w-md shadow-2xl animate-fade-in-up"
-      >
+    <Dialog onClose={onClose} role="alertdialog" labelledBy="delete-answer-title" describedBy="delete-answer-description" closeOnBackdrop={!deleting} closeOnEscape={!deleting} panelClassName="max-w-md p-6">
         <div className="flex items-start gap-3">
           <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-500">
             <IconAlertTriangle size={24} aria-hidden="true" />
@@ -230,8 +221,7 @@ function DeleteAnswerModal({ record, deleting, onConfirm, onClose }: DeleteAnswe
             {deleting ? '刪除中…' : '確認刪除'}
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   )
 }
 
@@ -263,11 +253,7 @@ function EditAnswerModal({ record, onSave, onClose }: EditAnswerModalProps) {
   }
 
   return (
-    <div
-      className="app-overlay fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4"
-      onClick={event => { if (event.target === event.currentTarget && !saving) onClose() }}
-    >
-      <div className="app-surface app-text border rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-fade-in-up">
+    <Dialog onClose={onClose} closeOnBackdrop={!saving} closeOnEscape={!saving} panelClassName="max-w-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="flex items-center gap-2 text-lg font-bold">
             <IconEdit size={20} className="app-accent" aria-hidden="true" />
@@ -315,7 +301,6 @@ function EditAnswerModal({ record, onSave, onClose }: EditAnswerModalProps) {
             {saving ? '儲存中…' : '儲存變更'}
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   )
 }
