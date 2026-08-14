@@ -16,7 +16,7 @@ interface Props {
 
 const CATEGORY_LABELS: Record<string, string> = {
   pet:            '🐾 寵物',
-  avatarFrame:    '🎖️ 頭像裝飾',
+  avatarFrame:    '🎖️ 節日頭像',
   particle:       '❄️ 雪花飄落',
   treasure:       '📦 寶石寶箱',
   background:     '🖼️ 背景主題',

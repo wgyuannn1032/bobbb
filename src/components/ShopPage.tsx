@@ -26,16 +26,6 @@ export const PET_SKINS: ShopItem[] = [
     preview: '/assets/20260813_123300.png', isImage: true, description: '解鎖後可永久使用的進階寵物造型' },
 ]
 
-// 角色解鎖（三層染色角色，熊/兔子免費，其餘需購買）
-export const CHARACTER_ITEMS: ShopItem[] = [
-  { id: 'char_bear',    category: 'pet', name: '熊',    price: 0,   isFree: true,  preview: '🐻', description: '免費角色，永久解鎖。' },
-  { id: 'char_rabbit',  category: 'pet', name: '兔子',  price: 0,   isFree: true,  preview: '🐰', description: '免費角色，永久解鎖。' },
-  { id: 'char_marmot',  category: 'pet', name: '土撥鼠', price: 120, isFree: false, preview: '🐹', description: '購買後永久解鎖，可在我的寵物中選用。' },
-  { id: 'char_fox',     category: 'pet', name: '狐狸',  price: 150, isFree: false, preview: '🦊', description: '購買後永久解鎖，可在我的寵物中選用。' },
-  { id: 'char_bee',     category: 'pet', name: '蜜蜂',  price: 180, isFree: false, preview: '🐝', description: '購買後永久解鎖，可在我的寵物中選用。' },
-  { id: 'char_shrimp',  category: 'pet', name: '蝦子',  price: 200, isFree: false, preview: '🦐', description: '購買後永久解鎖，可在我的寵物中選用。' },
-]
-
 export const AVATAR_FRAME_ITEMS: ShopItem[] = [
   { id: 'frame_ghost',   category: 'avatarFrame', name: '鬼月限定框（鬼門開）',   price: 1000, preview: '👻', description: '購買並使用後，右上角頭像邊框顯示鬼月限定裝飾。效果維持一天。' },
   { id: 'frame_soldier', category: 'avatarFrame', name: '軍人節榮譽徽章',         price: 1000, preview: '🎖️', description: '購買並使用後，右上角頭像邊框顯示軍人節榮譽徽章。效果維持一天。' },
@@ -115,7 +105,7 @@ type TabId = 'pet' | 'avatarFrame' | 'particle' | 'treasure' | 'background' | 'c
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'pet',            label: '寵物',     icon: '🐾' },
-  { id: 'avatarFrame',    label: '頭像裝飾', icon: '🎖️' },
+  { id: 'avatarFrame',    label: '節日頭像', icon: '🎖️' },
   { id: 'particle',       label: '雪花飄落', icon: '❄️' },
   { id: 'treasure',       label: '寶石寶箱', icon: '📦' },
   { id: 'background',     label: '背景主題', icon: '🖼️' },
@@ -265,7 +255,6 @@ export default function ShopPage({ db, uid, userData, onUserDataChanged, onShowT
   const coins        = userData.coins ?? 0
   const owned        = userData.ownedCostumes ?? []
   const equippedSkin = userData.equippedPetSkin ?? null
-  const equippedCharacter = userData.equippedCharacter ?? '熊'
   const equippedBg   = userData.equippedBg ?? 'dream_macaron'
   const bgExpiry     = userData.bgExpiry ?? null
   const equippedParticle    = userData.equippedParticle ?? null
@@ -289,16 +278,6 @@ export default function ShopPage({ db, uid, userData, onUserDataChanged, onShowT
     await equipPetSkin(db, uid, nextId)
     onUserDataChanged({ equippedPetSkin: nextId })
     onShowToast(nextId ? `已裝備「${item.name}」` : '已卸下造型', 'success')
-  }
-
-  // 角色與圖片寵物共用商城分類，但使用不同的裝備欄位。
-  const handleEquipCharacter = async (item: ShopItem) => {
-    await updateDoc(doc(db, 'users', uid), {
-      equippedCharacter: item.name,
-      equippedPetSkin: null,
-    })
-    onUserDataChanged({ equippedCharacter: item.name, equippedPetSkin: null })
-    onShowToast(`已裝備「${item.name}」`, 'success')
   }
 
   // ── 套用背景（背包使用後呼叫） ──────────────────────────
@@ -384,14 +363,12 @@ export default function ShopPage({ db, uid, userData, onUserDataChanged, onShowT
   const renderItems = () => {
     switch (activeTab) {
       case 'pet':
-        return [...PET_SKINS, ...CHARACTER_ITEMS].map(item => (
+        return PET_SKINS.map(item => (
           <ShopCard key={item.id} item={item} coins={coins}
             isOwned={item.isFree || owned.includes(item.id)}
-            isEquipped={item.id.startsWith('char_')
-              ? equippedSkin === null && equippedCharacter === item.name
-              : equippedSkin === item.id}
+            isEquipped={equippedSkin === item.id}
             onBuyClick={setConfirmItem}
-            onEquip={item.id.startsWith('char_') ? handleEquipCharacter : handleEquipPet} />
+            onEquip={handleEquipPet} />
         ))
 
       case 'avatarFrame':
