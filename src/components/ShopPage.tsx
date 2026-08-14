@@ -80,6 +80,15 @@ export const BG_GRADIENTS: Record<string, string> = {
   bg_ocean:      'linear-gradient(135deg, #0e0e2e 0%, #1c1c6a 40%, #1040a0 100%)',
 }
 
+// 深色模式保留各主題的色相，但降低明度與飽和度，避免淺色背景刺眼。
+export const BG_DARK_MODE_GRADIENTS: Record<string, string> = {
+  dream_macaron: 'linear-gradient(135deg, #2b2028 0%, #192a25 50%, #1c2435 100%)',
+  bg_starlight:  'linear-gradient(135deg, #14122f 0%, #252147 50%, #17172f 100%)',
+  bg_peach:      'linear-gradient(135deg, #33251d 0%, #342d1d 40%, #362122 100%)',
+  bg_mint:       'linear-gradient(135deg, #172b29 0%, #1d3028 50%, #27331f 100%)',
+  bg_ocean:      'linear-gradient(135deg, #09091f 0%, #151552 40%, #0d327c 100%)',
+}
+
 // 背景的文字顏色（深色背景需要白色文字）
 export const BG_DARK: Record<string, boolean> = {
   bg_starlight: true,
@@ -131,8 +140,8 @@ function ConfirmModal({ item, coins, onConfirm, onCancel, buying }: ConfirmModal
   const canAfford = coins >= item.price
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div className="relative w-full max-w-sm rounded-2xl p-6 shadow-2xl bg-white">
-        <button onClick={onCancel} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition" aria-label="關閉">
+      <div className="app-surface app-text relative w-full max-w-sm rounded-2xl border p-6 shadow-2xl">
+        <button onClick={onCancel} className="app-text-muted app-hover absolute right-4 top-4 rounded-lg transition" aria-label="關閉">
           <IconX size={20} />
         </button>
         <div className="flex flex-col items-center gap-3 mb-4">
@@ -140,12 +149,12 @@ function ConfirmModal({ item, coins, onConfirm, onCancel, buying }: ConfirmModal
             ? <img src={item.preview} alt={item.name} className="w-24 h-24 object-contain rounded-xl" style={{ border: '2px solid #FFB7C5' }} />
             : <div className="text-5xl">{item.preview}</div>
           }
-          <h3 className="text-lg font-bold text-gray-800">{item.name}</h3>
+          <h3 className="app-text text-lg font-bold">{item.name}</h3>
           <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: '#FFB7C5', color: '#7B2D3E' }}>
             {TABS.find(t => t.id === item.category)?.label ?? item.category}
           </span>
         </div>
-        <p className="text-sm text-gray-500 text-center leading-relaxed mb-4">{item.description}</p>
+        <p className="app-text-muted text-sm text-center leading-relaxed mb-4">{item.description}</p>
         {item.category !== 'pet' && item.category !== 'treasure' && !item.isFree && (
           <p className="text-xs text-center text-amber-600 mb-4 font-medium">
             💡 購買後需在背包按「<strong>使用</strong>」才會開始計時一天
@@ -154,11 +163,11 @@ function ConfirmModal({ item, coins, onConfirm, onCancel, buying }: ConfirmModal
         <div className="flex items-center justify-center gap-2 mb-4">
           <span className="text-2xl">🪙</span>
           <span className="text-xl font-extrabold" style={{ color: '#e65100' }}>{item.price}</span>
-          <span className="text-sm text-gray-400">金幣 · 剩餘 {coins} 枚</span>
+          <span className="app-text-muted text-sm">金幣 · 剩餘 {coins} 枚</span>
         </div>
         {!canAfford && <p className="text-center text-sm text-red-500 mb-3 font-semibold">💸 金幣不足，無法購買</p>}
         <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 rounded-xl py-2 text-sm font-semibold border transition hover:bg-gray-50" style={{ borderColor: '#e5e7eb', color: '#57606a' }}>取消</button>
+          <button onClick={onCancel} className="app-hover app-text-secondary flex-1 rounded-xl py-2 text-sm font-semibold border transition">取消</button>
           <button onClick={onConfirm} disabled={!canAfford || buying}
             className="flex-1 rounded-xl py-2 text-sm font-semibold transition flex items-center justify-center gap-1.5"
             style={{ background: canAfford ? 'linear-gradient(135deg,#FFB7C5,#C7CEEA)' : '#e5e7eb', color: canAfford ? '#7B2D3E' : '#9ca3af', cursor: canAfford ? 'pointer' : 'not-allowed' }}>
@@ -176,10 +185,10 @@ function ChestResultModal({ item, rewards, onClose }: { item: ShopItem; rewards:
   const total = rewards.reduce((a, b) => a + b, 0)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-      <div className="w-full max-w-xs rounded-2xl p-7 shadow-2xl text-center bg-white">
+      <div className="app-surface app-text w-full max-w-xs rounded-2xl border p-7 shadow-2xl text-center">
         <div className="text-5xl mb-3">{item.preview}</div>
         <h3 className="text-lg font-bold mb-1" style={{ color: '#7B2D3E' }}>🎉 寶箱開啟！</h3>
-        <p className="text-sm text-gray-500 mb-4">{item.name}</p>
+        <p className="app-text-muted text-sm mb-4">{item.name}</p>
         <div className="flex flex-wrap justify-center gap-2 mb-4">
           {rewards.map((r, i) => (
             <span key={i} className="px-3 py-1.5 rounded-full text-sm font-bold" style={{ background: '#FFDAC1', color: '#7B2D3E' }}>💎 +{r}</span>
@@ -207,34 +216,31 @@ function ShopCard({ item, coins, isOwned, isEquipped, isActive, onBuyClick, onEq
   const active = isEquipped || isActive
 
   return (
-    <div className="relative flex flex-col items-center gap-2 rounded-2xl border p-4 transition"
-      style={{ border: active ? '2px solid #FFB7C5' : '1.5px solid #e5e7eb', background: active ? 'linear-gradient(135deg,#fff5f7,#f0fff8)' : '#fafafa' }}>
-      <span className="absolute top-2 left-2 text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: '#FFB7C5', color: '#7B2D3E' }}>
+    <div className={`commerce-card relative flex flex-col items-center gap-2 rounded-2xl p-4 transition ${active ? 'is-active' : ''}`}>
+      <span className="commerce-card-tag absolute top-2 left-2 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
         {TABS.find(t => t.id === item.category)?.label ?? item.category}
       </span>
       {active && (
-        <span className="absolute top-2 right-2 text-[10px] font-bold" style={{ color: '#059669' }}>✦ 使用中</span>
+        <span className="app-success absolute top-2 right-2 text-[10px] font-bold">✦ 使用中</span>
       )}
       <div className="mt-5 mb-1">
         {item.isImage
-          ? <img src={item.preview} alt={item.name} className="w-20 h-20 object-contain rounded-xl" style={{ border: '1.5px solid #FFDAC1' }} />
+          ? <img src={item.preview} alt={item.name} className="commerce-card-preview w-20 h-20 object-contain rounded-xl border" />
           : <div className="text-4xl leading-none">{item.preview}</div>
         }
       </div>
-      <p className="text-sm font-semibold text-center text-gray-700 leading-tight">{item.name}</p>
-      {isFree && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: '#B5EAD7', color: '#1a6040' }}>免費</span>}
+      <p className="app-text text-sm font-semibold text-center leading-tight">{item.name}</p>
+      {isFree && <span className="commerce-free-tag text-[10px] px-2 py-0.5 rounded-full font-semibold">免費</span>}
 
       {(isFree || isOwned) ? (
         <button onClick={() => onEquip(item)}
-          className="mt-auto w-full rounded-xl py-1.5 text-xs font-semibold transition"
-          style={{ background: isEquipped ? '#d1fae5' : '#ede9fe', color: isEquipped ? '#065f46' : '#5b21b6' }}>
+          className={`commerce-equip-button mt-auto w-full rounded-xl py-1.5 text-xs font-semibold transition ${isEquipped ? 'is-equipped' : ''}`}>
           {isEquipped ? '使用中 ✓' : '裝備'}
         </button>
       ) : (
         // 可購買的非免費品 — 顯示「購買 🪙xxx」
         <button onClick={() => onBuyClick(item)} disabled={!canAfford}
-          className="mt-auto w-full rounded-xl py-1.5 text-xs font-semibold transition flex items-center justify-center gap-1"
-          style={canAfford ? { background: '#FFDAC1', color: '#7B2D3E' } : { background: '#f3f4f6', color: '#9ca3af', cursor: 'not-allowed' }}>
+          className="commerce-buy-button mt-auto w-full rounded-xl py-1.5 text-xs font-semibold transition flex items-center justify-center gap-1">
           🪙 {item.price}
         </button>
       )}
@@ -259,6 +265,7 @@ export default function ShopPage({ db, uid, userData, onUserDataChanged, onShowT
   const coins        = userData.coins ?? 0
   const owned        = userData.ownedCostumes ?? []
   const equippedSkin = userData.equippedPetSkin ?? null
+  const equippedCharacter = userData.equippedCharacter ?? '熊'
   const equippedBg   = userData.equippedBg ?? 'dream_macaron'
   const bgExpiry     = userData.bgExpiry ?? null
   const equippedParticle    = userData.equippedParticle ?? null
@@ -282,6 +289,16 @@ export default function ShopPage({ db, uid, userData, onUserDataChanged, onShowT
     await equipPetSkin(db, uid, nextId)
     onUserDataChanged({ equippedPetSkin: nextId })
     onShowToast(nextId ? `已裝備「${item.name}」` : '已卸下造型', 'success')
+  }
+
+  // 角色與圖片寵物共用商城分類，但使用不同的裝備欄位。
+  const handleEquipCharacter = async (item: ShopItem) => {
+    await updateDoc(doc(db, 'users', uid), {
+      equippedCharacter: item.name,
+      equippedPetSkin: null,
+    })
+    onUserDataChanged({ equippedCharacter: item.name, equippedPetSkin: null })
+    onShowToast(`已裝備「${item.name}」`, 'success')
   }
 
   // ── 套用背景（背包使用後呼叫） ──────────────────────────
@@ -370,8 +387,11 @@ export default function ShopPage({ db, uid, userData, onUserDataChanged, onShowT
         return [...PET_SKINS, ...CHARACTER_ITEMS].map(item => (
           <ShopCard key={item.id} item={item} coins={coins}
             isOwned={item.isFree || owned.includes(item.id)}
-            isEquipped={equippedSkin === item.id}
-            onBuyClick={setConfirmItem} onEquip={handleEquipPet} />
+            isEquipped={item.id.startsWith('char_')
+              ? equippedSkin === null && equippedCharacter === item.name
+              : equippedSkin === item.id}
+            onBuyClick={setConfirmItem}
+            onEquip={item.id.startsWith('char_') ? handleEquipCharacter : handleEquipPet} />
         ))
 
       case 'avatarFrame':
@@ -431,10 +451,9 @@ export default function ShopPage({ db, uid, userData, onUserDataChanged, onShowT
             <IconShoppingCart size={22} className="text-amber-500" />
             造型商城
           </h2>
-          <p className="text-sm mt-0.5" style={{ color: '#57606a' }}>用金幣為你的世界增添色彩</p>
+          <p className="app-text-muted text-sm mt-0.5">用金幣為你的世界增添色彩</p>
         </div>
-        <div className="flex items-center gap-1.5 border px-4 py-2 rounded-full text-sm font-bold shadow-sm"
-          style={{ background: '#FFDAC1', borderColor: '#ffb347' }}>
+        <div className="commerce-coin-badge flex items-center gap-1.5 border px-4 py-2 rounded-full text-sm font-bold shadow-sm">
           <IconCoin size={18} stroke={1.8} color="#f59e0b" />
           <span style={{ color: '#e65100' }}>{coins}</span>
           <span className="font-normal text-xs" style={{ color: '#9a5a00' }}>金幣</span>
@@ -444,10 +463,7 @@ export default function ShopPage({ db, uid, userData, onUserDataChanged, onShowT
       <div className="flex gap-2 flex-wrap">
         {TABS.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition border"
-            style={activeTab === tab.id
-              ? { background: 'linear-gradient(135deg,#FFB7C5,#C7CEEA)', color: '#7B2D3E', borderColor: '#FFB7C5' }
-              : { background: '#fafafa', color: '#57606a', borderColor: '#e5e7eb' }}>
+            className={`commerce-tab flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition border ${activeTab === tab.id ? 'is-active' : ''}`}>
             <span>{tab.icon}</span>{tab.label}
           </button>
         ))}
@@ -455,8 +471,7 @@ export default function ShopPage({ db, uid, userData, onUserDataChanged, onShowT
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{renderItems()}</div>
 
-      <div className="rounded-xl px-4 py-3 text-xs flex items-start gap-2"
-        style={{ background: '#FFF5F7', border: '1px solid #FFB7C5', color: '#9a3055' }}>
+      <div className="commerce-info-card rounded-xl border px-4 py-3 text-xs flex items-start gap-2">
         <IconSparkles size={15} className="flex-shrink-0 mt-0.5" />
         <span>
           玩遊戲得 🪙 金幣；每日問答/打卡得 💎 寶石。

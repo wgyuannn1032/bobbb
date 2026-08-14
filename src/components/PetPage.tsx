@@ -4,12 +4,13 @@ import { Firestore } from 'firebase/firestore'
 import { doc, updateDoc } from 'firebase/firestore'
 import { IconDiamond, IconHeart, IconLock, IconRefresh, IconSparkles } from '@tabler/icons-react'
 import {
+  equipPetSkin,
   feedPetGems,
   rgbToHex,
   EMOTION_RGB_DELTAS,
   UserData,
 } from '../lib/firestore'
-import { CHARACTER_ITEMS } from './ShopPage'
+import { CHARACTER_ITEMS, PET_SKINS } from './ShopPage'
 
 // 角色定義：對應 /character/ 資源與 CHARACTER_ITEMS 的 id
 const CHARACTERS: { name: string; itemId: string; isFree: boolean }[] = [
@@ -60,6 +61,20 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
   // 當前裝備的角色
   const equippedCharacter = userData.equippedCharacter ?? '熊'
 
+  // 當前裝備的圖片外型。舊版本曾把 char_* 誤寫進此欄位，必須排除，
+  // 否則寵物頁會找不到對應圖片而顯示成未解鎖。
+  const equippedSkin = PET_SKINS.some(skin => skin.id === userData.equippedPetSkin)
+    ? userData.equippedPetSkin ?? null
+    : null
+  const activeSkin = PET_SKINS.find(skin => skin.id === equippedSkin) ?? null
+
+  // 已解鎖的圖片外型（免費 + 已購買的）
+  const ownedSkinIds = new Set([
+    ...PET_SKINS.filter(skin => skin.isFree).map(skin => skin.id),
+    ...(userData.ownedCostumes ?? []),
+  ])
+  const isSkinOwned = (itemId: string) => ownedSkinIds.has(itemId)
+
   // 已解鎖的角色（免費 + 已購買的）
   const ownedCharacterIds = new Set([
     ...CHARACTER_ITEMS.filter(c => c.isFree).map(c => c.id),
@@ -70,8 +85,18 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
   // 切換角色並寫入 DB（未解鎖則不動作）
   const handleSelectCharacter = async (char: typeof CHARACTERS[number]) => {
     if (!isCharacterOwned(char.itemId)) return
-    await updateDoc(doc(db, 'users', uid), { equippedCharacter: char.name })
-    onUserDataChanged({ equippedCharacter: char.name })
+    await updateDoc(doc(db, 'users', uid), {
+      equippedCharacter: char.name,
+      equippedPetSkin: null,
+    })
+    onUserDataChanged({ equippedCharacter: char.name, equippedPetSkin: null })
+  }
+
+  // 切換圖片外型並寫入 DB（免費款與已購買款皆可選）
+  const handleSelectSkin = async (skinId: string) => {
+    if (!isSkinOwned(skinId)) return
+    await equipPetSkin(db, uid, skinId)
+    onUserDataChanged({ equippedPetSkin: skinId })
   }
 
   // 預覽計算（不寫入 DB）
@@ -169,7 +194,47 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
         />
         <div className="p-5 flex flex-col items-center gap-5">
 
-          {/* 角色選擇 */}
+          {/* 圖片寵物外型選擇 */}
+          <div className="w-full">
+            <p className="app-text-secondary mb-2 text-center text-xs font-semibold">寵物外型</p>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {PET_SKINS.map(skin => {
+                const owned = isSkinOwned(skin.id)
+                const selected = equippedSkin === skin.id
+                return (
+                  <button
+                    key={skin.id}
+                    type="button"
+                    onClick={() => handleSelectSkin(skin.id)}
+                    disabled={!owned}
+                    title={owned ? skin.name : `尚未解鎖（${skin.price} 🪙）`}
+                    className={`relative overflow-hidden rounded-xl border p-1.5 transition ${
+                      !owned
+                        ? 'cursor-not-allowed opacity-45 border-dashed'
+                        : selected
+                          ? 'border-violet-500 ring-2 ring-violet-200'
+                          : 'hover:border-violet-400'
+                    }`}
+                  >
+                    <img
+                      src={skin.preview}
+                      alt={skin.name}
+                      className="aspect-square w-full rounded-lg object-contain"
+                    />
+                    {!owned && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/15">
+                        <IconLock size={16} className="text-white drop-shadow" aria-hidden="true" />
+                      </span>
+                    )}
+                    <span className="mt-1 block truncate text-[10px] font-medium">{skin.name}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* 可換色角色選擇 */}
+          <p className="app-text-secondary -mb-3 text-center text-xs font-semibold">可換色角色</p>
           <div className="flex gap-2 flex-wrap justify-center">
             {CHARACTERS.map(char => {
               const owned = isCharacterOwned(char.itemId)
@@ -196,39 +261,47 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
             })}
           </div>
 
-          {/* 三層圖層染色寵物 */}
-          <div className="relative isolate h-48 w-48" aria-label={`${equippedCharacter}預覽`}>
-            {/* 底色層：用 petHex 染色，透過 mask 限定區域 */}
-            <div
-              style={{
-                backgroundColor: petHex,
-                WebkitMaskImage: `url('/character/${equippedCharacter}mask.png')`,
-                maskImage: `url('/character/${equippedCharacter}mask.png')`,
-                WebkitMaskSize: 'contain',
-                maskSize: 'contain',
-                WebkitMaskRepeat: 'no-repeat',
-                maskRepeat: 'no-repeat',
-                WebkitMaskPosition: 'center',
-                maskPosition: 'center',
-                transition: 'background-color 0.5s ease',
-              } as React.CSSProperties}
-              className="absolute inset-0 h-full w-full"
-            />
-            {/* 中層：灰階陰影 multiply 混合 */}
+          {activeSkin ? (
             <img
-              src={`/character/${equippedCharacter}base.png`}
-              alt=""
-              aria-hidden="true"
-              style={{ mixBlendMode: 'multiply' }}
-              className="absolute inset-0 h-full w-full object-contain"
+              src={activeSkin.preview}
+              alt={`${activeSkin.name}預覽`}
+              className="h-48 w-48 object-contain"
             />
-            {/* 頂層：不染色的細節（眼睛、輪廓等） */}
-            <img
-              src={`/character/${equippedCharacter}overlay.png`}
-              alt={equippedCharacter}
-              className="absolute inset-0 h-full w-full object-contain"
-            />
-          </div>
+          ) : (
+            /* 三層圖層染色寵物 */
+            <div className="relative isolate h-48 w-48" aria-label={`${equippedCharacter}預覽`}>
+              {/* 底色層：用 petHex 染色，透過 mask 限定區域 */}
+              <div
+                style={{
+                  backgroundColor: petHex,
+                  WebkitMaskImage: `url('/character/${equippedCharacter}mask.png')`,
+                  maskImage: `url('/character/${equippedCharacter}mask.png')`,
+                  WebkitMaskSize: 'contain',
+                  maskSize: 'contain',
+                  WebkitMaskRepeat: 'no-repeat',
+                  maskRepeat: 'no-repeat',
+                  WebkitMaskPosition: 'center',
+                  maskPosition: 'center',
+                  transition: 'background-color 0.5s ease',
+                } as React.CSSProperties}
+                className="absolute inset-0 h-full w-full"
+              />
+              {/* 中層：灰階陰影 multiply 混合 */}
+              <img
+                src={`/character/${equippedCharacter}base.png`}
+                alt=""
+                aria-hidden="true"
+                style={{ mixBlendMode: 'multiply' }}
+                className="absolute inset-0 h-full w-full object-contain"
+              />
+              {/* 頂層：不染色的細節（眼睛、輪廓等） */}
+              <img
+                src={`/character/${equippedCharacter}overlay.png`}
+                alt={equippedCharacter}
+                className="absolute inset-0 h-full w-full object-contain"
+              />
+            </div>
+          )}
 
           {/* Color info */}
           <div className="flex items-center gap-3">

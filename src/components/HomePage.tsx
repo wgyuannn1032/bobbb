@@ -46,7 +46,7 @@ import ShopPage from './ShopPage'
 import BackpackPage from './BackpackPage'
 import PetPage from './PetPage'
 import FallingParticles, { getParticleEmojis } from './FallingParticles'
-import { PET_SKINS, BG_GRADIENTS, BG_DARK } from './ShopPage'
+import { PET_SKINS, BG_GRADIENTS, BG_DARK_MODE_GRADIENTS, BG_DARK } from './ShopPage'
 import { AVATAR_FRAME_ITEMS } from './ShopPage'
 
 interface Props {
@@ -257,6 +257,7 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 
   // 背景漸層
   const bgGradient = BG_GRADIENTS[activeBgId] ?? BG_GRADIENTS['dream_macaron']
+  const bgDarkModeGradient = BG_DARK_MODE_GRADIENTS[activeBgId] ?? BG_DARK_MODE_GRADIENTS['dream_macaron']
   const bgIsDark   = BG_DARK[activeBgId] ?? false
 
   const avatarUrl =
@@ -273,7 +274,15 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
   }
 
   return (
-    <div className="app-page flex" style={{ background: bgGradient, minHeight: '100vh', color: bgIsDark ? '#f1f5f9' : undefined }}>
+    <div
+      className="app-page app-themed-background flex"
+      style={{
+        '--app-themed-bg-light': bgGradient,
+        '--app-themed-bg-dark': bgDarkModeGradient,
+        minHeight: '100vh',
+        color: bgIsDark ? '#f1f5f9' : undefined,
+      } as React.CSSProperties}
+    >
     {/* 飄落粒子特效（全畫面底層） */}
     {particleEmojis.length > 0 && <FallingParticles emojis={particleEmojis} />}
 			{/* ── SIDEBAR ─────────────────────────────────── */}

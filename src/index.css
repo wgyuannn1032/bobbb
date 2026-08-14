@@ -68,6 +68,9 @@
     background: var(--app-bg);
     color: var(--app-text);
   }
+  .app-themed-background {
+    background: var(--app-themed-bg-light, var(--app-bg));
+  }
   .app-surface {
     background: var(--app-surface);
     border-color: var(--app-border);
@@ -95,6 +98,38 @@
     background: linear-gradient(135deg, var(--app-gem-card-from), var(--app-gem-card-to));
     border-color: var(--app-gem-card-border);
   }
+
+  /* 商城與背包共用的主題化卡片 */
+  .commerce-card {
+    border: 1.5px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface) 94%, var(--app-surface-muted));
+  }
+  .commerce-card.is-active {
+    border: 2px solid #f0a8bd;
+    background: linear-gradient(135deg, #fff5f7, #f0fff8);
+  }
+  .commerce-card-tag { background: #ffcad5; color: #7b2d3e; }
+  .commerce-card-preview { border-color: #ffdac1; }
+  .commerce-free-tag { background: #b5ead7; color: #1a6040; }
+  .commerce-equip-button { background: #ede9fe; color: #5b21b6; }
+  .commerce-equip-button.is-equipped { background: #d1fae5; color: #065f46; }
+  .commerce-buy-button { background: #ffdac1; color: #7b2d3e; }
+  .commerce-buy-button:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+  .commerce-coin-badge { background: #ffdac1; border-color: #ffb347; }
+  .commerce-tab { background: var(--app-surface); color: var(--app-text-secondary); border-color: var(--app-border); }
+  .commerce-tab.is-active { background: linear-gradient(135deg, #ffb7c5, #c7ceea); color: #7b2d3e; border-color: #ffb7c5; }
+  .commerce-info-card { background: #fff5f7; border-color: #ffb7c5; color: #9a3055; }
+  .commerce-date-badge { background: #f0fff8; border-color: #b5ead7; color: #1a6040; }
+  .commerce-empty-card { background: #fff5f7; border: 1.5px dashed #ffb7c5; }
+  .commerce-use-button { background: linear-gradient(135deg, #ffb7c5, #c7ceea); color: #7b2d3e; }
+  .commerce-stop-button { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+
+  .backpack-card { border: 2px solid var(--app-border); background: var(--app-surface); }
+  .backpack-card.is-active { border-color: #b5ead7; background: linear-gradient(135deg, #f0fff8, #fff5f7); }
+  .backpack-card.is-unused { border-color: #ffdac1; background: linear-gradient(135deg, #fffbeb, #fff); }
+  .backpack-card.is-expired { background: #f9fafb; opacity: .55; }
+  .backpack-card-tag { background: #e5e7eb; color: #6b7280; }
+  .backpack-card-tag.is-active { background: #b5ead7; color: #1a6040; }
 
   /* 3D memory-game cards: the button supplies perspective while its inner
      element rotates, so both faces stay crisp throughout the flip. */
@@ -165,6 +200,40 @@
       transition-duration: 1ms;
     }
   }
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-themed-background {
+    background: var(--app-themed-bg-dark, var(--app-bg));
+  }
+
+  .commerce-card {
+    background: color-mix(in srgb, var(--app-surface) 88%, #11111c);
+  }
+  .commerce-card.is-active {
+    border-color: #9d6682;
+    background: linear-gradient(135deg, #31232f, #1d312d);
+  }
+  .commerce-card-tag { background: #4a2b38; color: #f8b4c7; }
+  .commerce-card-preview { border-color: #5b4639; }
+  .commerce-free-tag { background: #183f34; color: #6ee7b7; }
+  .commerce-equip-button { background: #302856; color: #c4b5fd; }
+  .commerce-equip-button.is-equipped { background: #174335; color: #6ee7b7; }
+  .commerce-buy-button { background: #4a3528; color: #fdba74; }
+  .commerce-buy-button:disabled { background: #272737; color: #6b7280; }
+  .commerce-coin-badge { background: #3b2c20; border-color: #765125; }
+  .commerce-tab.is-active { background: linear-gradient(135deg, #563346, #3b3c67); color: #fbc4d2; border-color: #86536a; }
+  .commerce-info-card { background: #2d202a; border-color: #644053; color: #f0a8bd; }
+  .commerce-date-badge { background: #18372e; border-color: #326b58; color: #6ee7b7; }
+  .commerce-empty-card { background: #2b2029; border-color: #70465a; }
+  .commerce-use-button { background: linear-gradient(135deg, #5d3547, #3b3f6c); color: #fbc4d2; }
+  .commerce-stop-button { background: #431f25; color: #fca5a5; border-color: #7f363f; }
+
+  .backpack-card.is-active { border-color: #326b58; background: linear-gradient(135deg, #19322b, #2c222b); }
+  .backpack-card.is-unused { border-color: #6d5035; background: linear-gradient(135deg, #30291d, #20202f); }
+  .backpack-card.is-expired { background: #181824; }
+  .backpack-card-tag { background: #303043; color: #aeb6c5; }
+  .backpack-card-tag.is-active { background: #183f34; color: #6ee7b7; }
 }
 
 /* Custom scrollbar */

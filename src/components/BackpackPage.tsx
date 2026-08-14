@@ -230,12 +230,11 @@ export default function BackpackPage({ db, uid, userData, onUserDataChanged, onS
             <IconBackpack size={22} style={{ color: '#C7CEEA' }} />
             背包
           </h2>
-          <p className="text-sm mt-0.5" style={{ color: '#57606a' }}>
+          <p className="app-text-muted text-sm mt-0.5">
             待使用 {grouped.length} 種 · 使用中 {activeEntries.length} 件
           </p>
         </div>
-        <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border"
-          style={{ background: '#F0FFF8', borderColor: '#B5EAD7', color: '#1a6040' }}>
+        <span className="commerce-date-badge flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border">
           <IconClock size={13} />{today}
         </span>
       </div>
@@ -286,10 +285,10 @@ export default function BackpackPage({ db, uid, userData, onUserDataChanged, onS
 
       {/* 空背包 */}
       {grouped.length === 0 && activeEntries.length === 0 && (
-        <div className="rounded-2xl px-6 py-12 text-center" style={{ background: '#FFF5F7', border: '1.5px dashed #FFB7C5' }}>
+        <div className="commerce-empty-card rounded-2xl px-6 py-12 text-center">
           <div className="text-4xl mb-3">🎒</div>
           <p className="text-sm font-semibold" style={{ color: '#9a3055' }}>背包是空的</p>
-          <p className="text-xs mt-1" style={{ color: '#b08090' }}>前往造型商城購買道具，購買後這裡會出現！</p>
+          <p className="app-text-muted text-xs mt-1">前往造型商城購買道具，購買後這裡會出現！</p>
         </div>
       )}
 
@@ -308,8 +307,7 @@ export default function BackpackPage({ db, uid, userData, onUserDataChanged, onS
         </div>
       )}
 
-      <div className="rounded-xl px-4 py-3 text-xs flex items-start gap-2"
-        style={{ background: '#F5F7FF', border: '1px solid #C7CEEA', color: '#3d4a8a' }}>
+      <div className="commerce-info-card rounded-xl border px-4 py-3 text-xs flex items-start gap-2">
         <IconSparkles size={15} className="flex-shrink-0 mt-0.5" />
         <span>
           購買後在此按「<strong>使用</strong>」開始計時一天。
@@ -335,20 +333,11 @@ interface BackpackCardProps {
 }
 
 function BackpackCard({ entry, status, count, onUse, loading, onStop, stopping }: BackpackCardProps) {
-  const borderColor = status === 'active'  ? '#B5EAD7'
-                    : status === 'unused'  ? '#FFDAC1'
-                    : '#e5e7eb'
-  const bg = status === 'active'  ? 'linear-gradient(135deg,#f0fff8,#fff5f7)'
-           : status === 'unused'  ? 'linear-gradient(135deg,#fffbeb,#fff)'
-           : '#f9fafb'
-
   return (
-    <div className="relative flex flex-col items-center gap-2 rounded-2xl p-4 transition"
-      style={{ border: `2px solid ${borderColor}`, background: bg, opacity: status === 'expired' ? 0.55 : 1 }}>
+    <div className={`backpack-card is-${status} relative flex flex-col items-center gap-2 rounded-2xl p-4 transition`}>
 
       {/* Category tag（左上） */}
-      <span className="absolute top-2 left-2 text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
-        style={{ background: status === 'active' ? '#B5EAD7' : '#e5e7eb', color: status === 'active' ? '#1a6040' : '#6b7280' }}>
+      <span className={`backpack-card-tag absolute top-2 left-2 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${status === 'active' ? 'is-active' : ''}`}>
         {CATEGORY_LABELS[entry.category] ?? entry.category}
       </span>
 
@@ -374,31 +363,30 @@ function BackpackCard({ entry, status, count, onUse, loading, onStop, stopping }
       <div className="text-3xl mt-5 mb-1">{entry.preview}</div>
 
       {/* Name */}
-      <p className="text-xs font-semibold text-center text-gray-700 leading-tight">{entry.name}</p>
+      <p className="app-text text-xs font-semibold text-center leading-tight">{entry.name}</p>
 
       {/* Expiry info */}
       {status === 'active' && (
-        <p className="text-[10px] text-emerald-600">
+        <p className="app-success text-[10px]">
           <IconClock size={10} className="inline mr-0.5" />到期：{entry.expiresAt}
         </p>
       )}
       {status === 'unused' && (
-        <p className="text-[10px] text-amber-600">購買於 {entry.purchasedAt}</p>
+        <p className="app-warning text-[10px]">購買於 {entry.purchasedAt}</p>
       )}
       {status === 'expired' && (
         <p className="text-[10px] text-gray-400">已過期（{entry.expiresAt}）</p>
       )}
 
       {/* Price */}
-      <p className="text-[10px]" style={{ color: '#9a5a00' }}>🪙 {entry.price} 金幣</p>
+      <p className="app-warning text-[10px]">🪙 {entry.price} 金幣</p>
 
       {/* 使用按鈕（只有「待使用」顯示） */}
       {status === 'unused' && onUse && (
         <button
           onClick={onUse}
           disabled={loading}
-          className="mt-1 w-full rounded-xl py-1.5 text-xs font-bold transition flex items-center justify-center gap-1"
-          style={{ background: 'linear-gradient(135deg,#FFB7C5,#C7CEEA)', color: '#7B2D3E' }}
+          className="commerce-use-button mt-1 w-full rounded-xl py-1.5 text-xs font-bold transition flex items-center justify-center gap-1"
         >
           {loading
             ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -412,8 +400,7 @@ function BackpackCard({ entry, status, count, onUse, loading, onStop, stopping }
         <button
           onClick={onStop}
           disabled={stopping}
-          className="mt-1 w-full rounded-xl py-1.5 text-xs font-bold transition flex items-center justify-center gap-1"
-          style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' }}
+          className="commerce-stop-button mt-1 w-full rounded-xl border py-1.5 text-xs font-bold transition flex items-center justify-center gap-1"
         >
           {stopping
             ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
