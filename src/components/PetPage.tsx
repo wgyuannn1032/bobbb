@@ -1,4 +1,4 @@
-// src/components/PetPage.tsx — 寵物頁面：寶石餵食換色 + 造型展示
+// src/components/PetPage.tsx — 寵物頁面：寶石餵食換色 + 三層圖層角色染色
 import { useState } from 'react'
 import { Firestore } from 'firebase/firestore'
 import { doc, updateDoc } from 'firebase/firestore'
@@ -9,8 +9,8 @@ import {
   EMOTION_RGB_DELTAS,
   UserData,
 } from '../lib/firestore'
-import { PET_SKINS } from './ShopPage'
-import { equipPetSkin } from '../lib/firestore'
+
+const CHARACTERS = ['熊', '兔子', '土撥鼠', '狐狸', '蜜蜂', '蝦子']
 
 const EMOTION_OPTIONS = Object.entries(EMOTION_RGB_DELTAS).map(([key, val]) => ({
   key,
@@ -48,16 +48,14 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
 
   const gems = userData.gems ?? 0
 
-  // 擁有的外型：基礎款 + 已購買的進階款
-  const ownedIds = new Set([
-    ...PET_SKINS.filter(s => s.isFree).map(s => s.id),
-    ...(userData.ownedCostumes ?? []),
-  ])
-  const ownedSkins = PET_SKINS.filter(s => ownedIds.has(s.id))
+  // 當前裝備的角色
+  const equippedCharacter = userData.equippedCharacter ?? '熊'
 
-  // 當前裝備
-  const equippedSkinId = userData.equippedPetSkin ?? null
-  const equippedSkin = PET_SKINS.find(s => s.id === equippedSkinId) ?? ownedSkins[0] ?? null
+  // 切換角色並寫入 DB
+  const handleSelectCharacter = async (name: string) => {
+    await updateDoc(doc(db, 'users', uid), { equippedCharacter: name })
+    onUserDataChanged({ equippedCharacter: name })
+  }
 
   // 預覽計算（不寫入 DB）
   const handleEmotionChange = (emotion: string) => {
@@ -114,14 +112,6 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
     }
   }
 
-  const handleEquipSkin = async (skinId: string) => {
-    const nextId = equippedSkinId === skinId ? null : skinId
-    await equipPetSkin(db, uid, nextId)
-    onUserDataChanged({ equippedPetSkin: nextId })
-    const skin = PET_SKINS.find(s => s.id === skinId)
-    onShowToast(nextId ? `已裝備「${skin?.name ?? skinId}」` : '已卸下造型', 'success')
-  }
-
   const handleReset = async () => {
     setFeeding(true)
     try {
@@ -131,7 +121,7 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
         petColorB:  200,
         petEmotion: null,
       })
-      onUserDataChanged({ petColorR: 180, petColorG: 150, petColorB: 200, petEmotion: null })
+      onUserDataChanged({ petColorR: 180, petColorG: 150, petColorB: 200, petEmotion: null  })
       setPreviewColor(null)
       onShowToast('寵物顏色已重置', 'success')
     } catch {
@@ -154,93 +144,70 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
         <p className="app-text-muted text-sm mt-0.5">餵食寶石來改變寵物的顏色</p>
       </div>
 
-      {/* 我的造型 — 只顯示擁有的外型 */}
-      <div className="app-surface border rounded-2xl p-4 space-y-3">
-        <p className="text-sm font-semibold flex items-center gap-1.5">
-          <IconHeart size={15} className="text-pink-400" aria-hidden="true" />
-          我的造型
-          <span className="text-xs font-normal app-text-muted ml-1">（共 {ownedSkins.length} 款）</span>
-        </p>
-        {ownedSkins.length === 0 ? (
-          <p className="text-xs app-text-muted py-2 text-center">前往商城購買進階造型後會出現在這裡</p>
-        ) : (
-          <div className="flex gap-3 flex-wrap">
-            {ownedSkins.map(skin => {
-              const isEquipped = equippedSkinId === skin.id
-              return (
-                <button
-                  key={skin.id}
-                  onClick={() => handleEquipSkin(skin.id)}
-                  title={skin.name}
-                  className="relative flex flex-col items-center gap-1 rounded-xl p-2 border transition"
-                  style={{
-                    borderColor: isEquipped ? '#FFB7C5' : '#e5e7eb',
-                    background: isEquipped ? 'linear-gradient(135deg,#fff5f7,#f0fff8)' : '#fafafa',
-                  }}
-                >
-                  <img
-                    src={skin.preview}
-                    alt={skin.name}
-                    className="w-16 h-16 object-contain rounded-lg"
-                    style={{ border: '1.5px solid #FFDAC1' }}
-                  />
-                  <span className="text-[10px] font-medium" style={{ color: isEquipped ? '#7B2D3E' : '#57606a' }}>
-                    {skin.name}
-                  </span>
-                  {isEquipped && (
-                    <span
-                      className="absolute -top-1.5 -right-1.5 text-[9px] font-bold px-1 py-0.5 rounded-full"
-                      style={{ background: '#FFB7C5', color: '#7B2D3E' }}
-                    >
-                      裝備中
-                    </span>
-                  )}
-                  {skin.isFree && (
-                    <span
-                      className="absolute -top-1.5 -left-1.5 text-[9px] font-bold px-1 py-0.5 rounded-full"
-                      style={{ background: '#B5EAD7', color: '#1a6040' }}
-                    >
-                      免費
-                    </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Pet preview card */}
       <div className="app-surface border rounded-2xl overflow-hidden">
         {/* Color gradient header */}
         <div
           className={`h-2 bg-gradient-to-r ${eSty?.gradient ?? 'from-violet-400 to-indigo-400'} transition-all duration-500`}
         />
-        <div className="p-5 flex flex-col items-center gap-4">
-          {/* Pet figure — 顯示裝備中的外型圖片 */}
-          <div className="relative h-48 w-48 flex items-center justify-center">
-            {equippedSkin ? (
-              <img
-                src={equippedSkin.preview}
-                alt={equippedSkin.name}
-                className="h-48 w-48 object-contain rounded-2xl"
-                style={{
-                  filter: `sepia(0.2) hue-rotate(${Math.round(((petR - 128) / 255) * 60)}deg) saturate(1.2)`,
-                  transition: 'filter 0.6s ease',
-                }}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-48 w-48 rounded-2xl app-surface border border-dashed">
-                <p className="text-xs app-text-muted text-center px-4">尚未裝備任何造型<br />點選上方圖片來裝備</p>
-              </div>
-            )}
+        <div className="p-5 flex flex-col items-center gap-5">
+
+          {/* 角色選擇 */}
+          <div className="flex gap-2 flex-wrap justify-center">
+            {CHARACTERS.map(name => (
+              <button
+                key={name}
+                onClick={() => handleSelectCharacter(name)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  equippedCharacter === name
+                    ? 'bg-violet-500 text-white border-violet-500'
+                    : 'app-surface app-text-secondary border hover:border-violet-400'
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+
+          {/* 三層圖層染色寵物 */}
+          <div className="relative isolate h-48 w-48" aria-label={`${equippedCharacter}預覽`}>
+            {/* 底色層：用 petHex 染色，透過 mask 限定區域 */}
+            <div
+              style={{
+                backgroundColor: petHex,
+                WebkitMaskImage: `url('/character/${equippedCharacter}mask.png')`,
+                maskImage: `url('/character/${equippedCharacter}mask.png')`,
+                WebkitMaskSize: 'contain',
+                maskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                maskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
+                maskPosition: 'center',
+                transition: 'background-color 0.5s ease',
+              } as React.CSSProperties}
+              className="absolute inset-0 h-full w-full"
+            />
+            {/* 中層：灰階陰影 multiply 混合 */}
+            <img
+              src={`/character/${equippedCharacter}base.png`}
+              alt=""
+              aria-hidden="true"
+              style={{ mixBlendMode: 'multiply' }}
+              className="absolute inset-0 h-full w-full object-contain"
+            />
+            {/* 頂層：不染色的細節（眼睛、輪廓等） */}
+            <img
+              src={`/character/${equippedCharacter}overlay.png`}
+              alt={equippedCharacter}
+              className="absolute inset-0 h-full w-full object-contain"
+            />
           </div>
 
           {/* Color info */}
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-full border-2 border-[var(--app-border)] shadow-sm"
-              style={{ backgroundColor: petHex }}
+              style={{ backgroundColor: petHex, transition: 'background-color 0.5s ease' }}
             />
             <div>
               <p className="app-text text-sm font-semibold">
@@ -250,11 +217,6 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
               {userData.petEmotion && !previewColor && (
                 <p className="app-text-muted text-xs">
                   上次餵食情緒：{EMOTION_RGB_DELTAS[userData.petEmotion]?.label ?? userData.petEmotion}
-                </p>
-              )}
-              {equippedSkin && (
-                <p className="app-text-muted text-xs">
-                  裝備中：{equippedSkin.name}
                 </p>
               )}
             </div>

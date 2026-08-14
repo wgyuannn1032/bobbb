@@ -145,7 +145,7 @@
     border-color: rgb(253 164 175);
     background: linear-gradient(135deg, white, rgb(255 241 242));
     color: rgb(190 24 93);
-    font-size: clamp(1.25rem, 4vw, 1.5rem);
+    font-size: clamp(1.6rem, 5vw, 2rem);
     transform: rotateY(180deg);
   }
 

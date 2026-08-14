@@ -273,12 +273,18 @@ export default function FlipGamePage({ onAwardCoins, coinBonus = 0, coinMultipli
 							? "你的記憶力為花園帶來了光彩。"
 							: "再試一次，看看能不能完成所有配對。"}
 					</p>
-					<div className="app-surface-muted mt-5 rounded-xl border border-[var(--app-border)] py-4">
+					<div className="app-surface-muted mt-5 rounded-xl border border-[var(--app-border)] py-4 space-y-1">
 						<p className="app-text text-2xl font-extrabold">{score} 分</p>
 						<p className="app-warning mt-1 inline-flex items-center gap-1 text-sm font-semibold">
 							<IconCoin size={17} />
 							獲得 {reward} 金幣
 						</p>
+						{(coinBonus > 0 || coinMultiplier > 1) && (
+							<p className="app-text-muted text-xs mt-1 flex items-center justify-center gap-2">
+								{coinBonus > 0 && <span>➕ 加值 +{coinBonus}</span>}
+								{coinMultiplier > 1 && <span>✖️ 加成 ×{coinMultiplier}</span>}
+							</p>
+						)}
 					</div>
 					<div className="mt-5 flex gap-3">
 						<button

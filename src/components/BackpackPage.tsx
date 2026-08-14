@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Firestore } from 'firebase/firestore'
 import { doc, updateDoc } from 'firebase/firestore'
-import { IconBackpack, IconClock, IconSparkles, IconPlayerPlay } from '@tabler/icons-react'
+import { IconBackpack, IconClock, IconSparkles, IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react'
 import { UserData, BackpackEntry, useBackpackItem } from '../lib/firestore'
 import { COIN_BONUS_ITEMS, COIN_MULTI_ITEMS } from './ShopPage'
 
@@ -101,8 +101,21 @@ function groupUnused(backpack: BackpackEntry[]): GroupedEntry[] {
   return [...map.values()].sort((a, b) => a.entry.purchasedAt.localeCompare(b.entry.purchasedAt))
 }
 
+// 依 category 組出要清除的 Firestore 欄位
+function getClearFields(category: string): Record<string, unknown> {
+  switch (category) {
+    case 'avatarFrame':    return { equippedAvatarFrame: null, avatarFrameExpiry: null }
+    case 'particle':       return { equippedParticle: null,    particleExpiry: null }
+    case 'background':     return { equippedBg: 'dream_macaron', bgExpiry: null }
+    case 'coinBonus':      return { coinBonus: 0,              bonusExpiry: null }
+    case 'coinMultiplier': return { coinMultiplier: 1,         multiplierExpiry: null }
+    default: return {}
+  }
+}
+
 export default function BackpackPage({ db, uid, userData, onUserDataChanged, onShowToast }: Props) {
   const [using, setUsing] = useState<number | null>(null)
+  const [stopping, setStopping] = useState<number | null>(null)
   const backpack: BackpackEntry[] = userData.backpack ?? []
 
   // 已使用且有效的（顯示在「使用中」區，不合併）
@@ -183,6 +196,29 @@ export default function BackpackPage({ db, uid, userData, onUserDataChanged, onS
     }
   }
 
+  // ── 提前結束道具 ───────────────────────────────────────────────
+  const handleStop = async (idx: number, entry: BackpackEntry) => {
+    setStopping(idx)
+    try {
+      // 把 expiresAt 改為昨天讓它立即過期
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const yesterdayStr = yesterday.toISOString().slice(0, 10)
+
+      const newBackpack = (userData.backpack ?? []).map((e, i) =>
+        i === idx ? { ...e, expiresAt: yesterdayStr } : e
+      )
+      const clearFields = getClearFields(entry.category)
+      await updateDoc(doc(db, 'users', uid), { backpack: newBackpack, ...clearFields })
+      onUserDataChanged({ backpack: newBackpack, ...clearFields } as Partial<UserData>)
+      onShowToast(`「${entry.name}」效果已提前結束`, 'success')
+    } catch {
+      onShowToast('操作失敗，請稍後再試', 'error')
+    } finally {
+      setStopping(null)
+    }
+  }
+
   const today = todayStr()
 
   return (
@@ -235,7 +271,14 @@ export default function BackpackPage({ db, uid, userData, onUserDataChanged, onS
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {activeEntries.map(({ e, i }) => (
-              <BackpackCard key={`active-${i}`} entry={e} status="active" count={1} />
+              <BackpackCard
+                key={`active-${i}`}
+                entry={e}
+                status="active"
+                count={1}
+                onStop={() => handleStop(i, e)}
+                stopping={stopping === i}
+              />
             ))}
           </div>
         </div>
@@ -282,14 +325,16 @@ export default function BackpackPage({ db, uid, userData, onUserDataChanged, onS
 type CardStatus = 'unused' | 'active' | 'expired'
 
 interface BackpackCardProps {
-  entry:   BackpackEntry
-  status:  CardStatus
-  count:   number
-  onUse?:  () => void
+  entry:    BackpackEntry
+  status:   CardStatus
+  count:    number
+  onUse?:   () => void
   loading?: boolean
+  onStop?:  () => void
+  stopping?: boolean
 }
 
-function BackpackCard({ entry, status, count, onUse, loading }: BackpackCardProps) {
+function BackpackCard({ entry, status, count, onUse, loading, onStop, stopping }: BackpackCardProps) {
   const borderColor = status === 'active'  ? '#B5EAD7'
                     : status === 'unused'  ? '#FFDAC1'
                     : '#e5e7eb'
@@ -358,6 +403,21 @@ function BackpackCard({ entry, status, count, onUse, loading }: BackpackCardProp
           {loading
             ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             : <><IconPlayerPlay size={12} />使用</>
+          }
+        </button>
+      )}
+
+      {/* 提前結束按鈕（只有「使用中」顯示） */}
+      {status === 'active' && onStop && (
+        <button
+          onClick={onStop}
+          disabled={stopping}
+          className="mt-1 w-full rounded-xl py-1.5 text-xs font-bold transition flex items-center justify-center gap-1"
+          style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5' }}
+        >
+          {stopping
+            ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            : <><IconPlayerStop size={12} />提前結束</>
           }
         </button>
       )}

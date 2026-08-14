@@ -27,6 +27,7 @@ export interface UserData {
   equippedCostume?:  string | null
   // 新商城系統
   equippedPetSkin?:     string | null   // 裝備中的寵物外型 id
+  equippedCharacter?:   string | null   // 裝備中的角色（熊/兔子/土撥鼠/狐狸/蜜蜂/蝦子）
   equippedBg?:          string | null   // 裝備中的背景 id
   equippedParticle?:    string | null   // 裝備中的粒子特效 id
   equippedDecor?:       string | null   // 裝備中的舊節日裝飾 id（已廢棄，改用頭像框）
@@ -241,6 +242,7 @@ export async function ensureUserDoc(
         ownedCostumes:    [],
         equippedCostume:     null,
         equippedPetSkin:     null,
+        equippedCharacter:   '熊',
         equippedBg:          'dream_macaron',
         equippedParticle:    null,
         equippedDecor:       null,
@@ -275,6 +277,7 @@ export async function getUserData(db: Firestore, uid: string): Promise<UserData>
     ownedCostumes:       [],
     equippedCostume:     null,
     equippedPetSkin:     null,
+    equippedCharacter:   '熊',
     equippedBg:          'dream_macaron',
     equippedParticle:    null,
     equippedDecor:       null,
