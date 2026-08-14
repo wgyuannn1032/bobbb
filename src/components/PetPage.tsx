@@ -2,15 +2,24 @@
 import { useState } from 'react'
 import { Firestore } from 'firebase/firestore'
 import { doc, updateDoc } from 'firebase/firestore'
-import { IconDiamond, IconHeart, IconRefresh, IconSparkles } from '@tabler/icons-react'
+import { IconDiamond, IconHeart, IconLock, IconRefresh, IconSparkles } from '@tabler/icons-react'
 import {
   feedPetGems,
   rgbToHex,
   EMOTION_RGB_DELTAS,
   UserData,
 } from '../lib/firestore'
+import { CHARACTER_ITEMS } from './ShopPage'
 
-const CHARACTERS = ['熊', '兔子', '土撥鼠', '狐狸', '蜜蜂', '蝦子']
+// 角色定義：對應 /character/ 資源與 CHARACTER_ITEMS 的 id
+const CHARACTERS: { name: string; itemId: string; isFree: boolean }[] = [
+  { name: '熊',    itemId: 'char_bear',   isFree: true  },
+  { name: '兔子',  itemId: 'char_rabbit', isFree: true  },
+  { name: '土撥鼠', itemId: 'char_marmot', isFree: false },
+  { name: '狐狸',  itemId: 'char_fox',    isFree: false },
+  { name: '蜜蜂',  itemId: 'char_bee',    isFree: false },
+  { name: '蝦子',  itemId: 'char_shrimp', isFree: false },
+]
 
 const EMOTION_OPTIONS = Object.entries(EMOTION_RGB_DELTAS).map(([key, val]) => ({
   key,
@@ -51,10 +60,18 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
   // 當前裝備的角色
   const equippedCharacter = userData.equippedCharacter ?? '熊'
 
-  // 切換角色並寫入 DB
-  const handleSelectCharacter = async (name: string) => {
-    await updateDoc(doc(db, 'users', uid), { equippedCharacter: name })
-    onUserDataChanged({ equippedCharacter: name })
+  // 已解鎖的角色（免費 + 已購買的）
+  const ownedCharacterIds = new Set([
+    ...CHARACTER_ITEMS.filter(c => c.isFree).map(c => c.id),
+    ...(userData.ownedCostumes ?? []),
+  ])
+  const isCharacterOwned = (itemId: string) => ownedCharacterIds.has(itemId)
+
+  // 切換角色並寫入 DB（未解鎖則不動作）
+  const handleSelectCharacter = async (char: typeof CHARACTERS[number]) => {
+    if (!isCharacterOwned(char.itemId)) return
+    await updateDoc(doc(db, 'users', uid), { equippedCharacter: char.name })
+    onUserDataChanged({ equippedCharacter: char.name })
   }
 
   // 預覽計算（不寫入 DB）
@@ -154,19 +171,29 @@ export default function PetPage({ db, uid, userData, onUserDataChanged, onShowTo
 
           {/* 角色選擇 */}
           <div className="flex gap-2 flex-wrap justify-center">
-            {CHARACTERS.map(name => (
-              <button
-                key={name}
-                onClick={() => handleSelectCharacter(name)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                  equippedCharacter === name
-                    ? 'bg-violet-500 text-white border-violet-500'
-                    : 'app-surface app-text-secondary border hover:border-violet-400'
-                }`}
-              >
-                {name}
-              </button>
-            ))}
+            {CHARACTERS.map(char => {
+              const owned = isCharacterOwned(char.itemId)
+              const item  = CHARACTER_ITEMS.find(c => c.id === char.itemId)
+              const price = item?.price ?? 0
+              return (
+                <button
+                  key={char.name}
+                  onClick={() => handleSelectCharacter(char)}
+                  disabled={!owned}
+                  title={owned ? char.name : `前往商城購買（${price} 🪙）`}
+                  className={`relative px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    !owned
+                      ? 'opacity-50 cursor-not-allowed app-surface app-text-muted border-dashed'
+                      : equippedCharacter === char.name
+                        ? 'bg-violet-500 text-white border-violet-500'
+                        : 'app-surface app-text-secondary border hover:border-violet-400'
+                  }`}
+                >
+                  {!owned && <IconLock size={11} className="inline mr-1 -mt-0.5" aria-hidden="true" />}
+                  {char.name}
+                </button>
+              )
+            })}
           </div>
 
           {/* 三層圖層染色寵物 */}

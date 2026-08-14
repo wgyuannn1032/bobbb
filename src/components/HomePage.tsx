@@ -641,11 +641,6 @@ export default function HomePage({ user, db, config, onSaveProfile, onLogout }: 
 									<div className="min-w-0 flex-1">
 										<p className="app-text flex items-center gap-1.5 text-sm font-semibold">
 											我的寵物
-											{userData.equippedPetSkin && (
-													<span className="text-base ml-1">
-														{PET_SKINS.find(c => c.id === userData.equippedPetSkin)?.preview ?? ''}
-													</span>
-												)}
 										</p>
 										<p className="app-text-muted mt-0.5 text-xs">
 											餵食寶石改變顏色

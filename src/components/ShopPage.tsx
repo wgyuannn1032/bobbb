@@ -26,6 +26,16 @@ export const PET_SKINS: ShopItem[] = [
     preview: '/assets/20260813_123300.png', isImage: true, description: '解鎖後可永久使用的進階寵物造型' },
 ]
 
+// 角色解鎖（三層染色角色，熊/兔子免費，其餘需購買）
+export const CHARACTER_ITEMS: ShopItem[] = [
+  { id: 'char_bear',    category: 'pet', name: '熊',    price: 0,   isFree: true,  preview: '🐻', description: '免費角色，永久解鎖。' },
+  { id: 'char_rabbit',  category: 'pet', name: '兔子',  price: 0,   isFree: true,  preview: '🐰', description: '免費角色，永久解鎖。' },
+  { id: 'char_marmot',  category: 'pet', name: '土撥鼠', price: 120, isFree: false, preview: '🐹', description: '購買後永久解鎖，可在我的寵物中選用。' },
+  { id: 'char_fox',     category: 'pet', name: '狐狸',  price: 150, isFree: false, preview: '🦊', description: '購買後永久解鎖，可在我的寵物中選用。' },
+  { id: 'char_bee',     category: 'pet', name: '蜜蜂',  price: 180, isFree: false, preview: '🐝', description: '購買後永久解鎖，可在我的寵物中選用。' },
+  { id: 'char_shrimp',  category: 'pet', name: '蝦子',  price: 200, isFree: false, preview: '🦐', description: '購買後永久解鎖，可在我的寵物中選用。' },
+]
+
 export const AVATAR_FRAME_ITEMS: ShopItem[] = [
   { id: 'frame_ghost',   category: 'avatarFrame', name: '鬼月限定框（鬼門開）',   price: 1000, preview: '👻', description: '購買並使用後，右上角頭像邊框顯示鬼月限定裝飾。效果維持一天。' },
   { id: 'frame_soldier', category: 'avatarFrame', name: '軍人節榮譽徽章',         price: 1000, preview: '🎖️', description: '購買並使用後，右上角頭像邊框顯示軍人節榮譽徽章。效果維持一天。' },
@@ -63,11 +73,11 @@ export const BACKGROUND_ITEMS: ShopItem[] = [
 
 // 更明顯的背景漸層（加大對比與色彩飽和度）
 export const BG_GRADIENTS: Record<string, string> = {
-  dream_macaron: 'linear-gradient(135deg, #ff8fab 0%, #a8edca 50%, #c9d6ff 100%)',
-  bg_starlight:  'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
-  bg_peach:      'linear-gradient(135deg, #f7971e 0%, #ffd200 40%, #ff6b6b 100%)',
-  bg_mint:       'linear-gradient(135deg, #11998e 0%, #38ef7d 50%, #56ab2f 100%)',
-  bg_ocean:      'linear-gradient(135deg, #0a0a2e 0%, #1a1a6e 40%, #0d47a1 100%)',
+  dream_macaron: 'linear-gradient(135deg, #ffd6e3 0%, #c8f5e0 50%, #dce8ff 100%)',
+  bg_starlight:  'linear-gradient(135deg, #1a1740 0%, #2e2a5a 50%, #1e1e3c 100%)',
+  bg_peach:      'linear-gradient(135deg, #fce0a2 0%, #fff0b0 40%, #ffc8b0 100%)',
+  bg_mint:       'linear-gradient(135deg, #b2f0e8 0%, #c8fad8 50%, #c6eeaa 100%)',
+  bg_ocean:      'linear-gradient(135deg, #0e0e2e 0%, #1c1c6a 40%, #1040a0 100%)',
 }
 
 // 背景的文字顏色（深色背景需要白色文字）
@@ -357,7 +367,7 @@ export default function ShopPage({ db, uid, userData, onUserDataChanged, onShowT
   const renderItems = () => {
     switch (activeTab) {
       case 'pet':
-        return PET_SKINS.map(item => (
+        return [...PET_SKINS, ...CHARACTER_ITEMS].map(item => (
           <ShopCard key={item.id} item={item} coins={coins}
             isOwned={item.isFree || owned.includes(item.id)}
             isEquipped={equippedSkin === item.id}

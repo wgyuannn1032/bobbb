@@ -136,7 +136,7 @@ export default function FallingParticles({ emojis, count = 18 }: FallingParticle
       ref={containerRef}
       style={{
         position: 'fixed', inset: 0,
-        zIndex: -1,          // 背景層：所有 UI 之下，僅作動態裝飾
+        zIndex: 1,           // 背景漸層之上、所有 UI 之下（UI 無 position 時預設 auto > 1）
         pointerEvents: 'none', overflow: 'hidden',
       }}
       aria-hidden="true"
